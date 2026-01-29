@@ -1,0 +1,7 @@
+<Solution>
+  <Configurations>
+    <Platform Name="x64" />
+  </Configurations>
+  <Project Path="Crown/Crown.vcxproj" Id="d37ee4af-7e94-4320-804b-7de4cf4cb259" />
+  <Project Path="Sandbox/Sandbox.vcxproj" Id="5a4e7c6b-c185-4b4c-9788-f111743f87dd" />
+</Solution>
