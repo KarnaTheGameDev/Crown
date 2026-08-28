@@ -3,6 +3,10 @@
 
 #include "Crown/Log.h"
 
+// ponytail: glClear* are GL 1.1, straight out of opengl32.
+// Add glad when the first shader needs GL 2.0+ entry points.
+#include <GL/gl.h>
+
 namespace Crown {
 
 	Application* Application::s_Instance = nullptr;
@@ -32,6 +36,8 @@ namespace Crown {
 	{
 		while (m_Running)
 		{
+			glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
 			m_Window->OnUpdate();
 		}
 	}
