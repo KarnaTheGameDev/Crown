@@ -7,6 +7,8 @@
   </Configurations>
   <Project Path="Crown\Crown.vcxproj" Id="0ED5FB0C-7AE9-23BE-436B-C71DAF3E20EF">
   </Project>
+  <Project Path="Crown\vendor\GLFW\GLFW.vcxproj" Id="154B857C-0182-860D-AA6E-6C109684020F">
+  </Project>
   <Project Path="Sandbox\Sandbox.vcxproj" Id="F4C124E3-60A1-A37E-69B9-2E55D5170AE0">
   </Project>
 </Solution>

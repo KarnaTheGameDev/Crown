@@ -4,6 +4,15 @@
     <Filter Include="Crown">
       <UniqueIdentifier>{0ED5FB0C-7AE9-23BE-436B-C71DAF3E20EF}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Crown\Events">
+      <UniqueIdentifier>{3285C9C1-1EE8-5866-C76D-911CB3AF24E9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform">
+      <UniqueIdentifier>{2AC788B4-1694-E3BF-3FAD-D1672BD9184E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Platform\Windows">
+      <UniqueIdentifier>{64FBD71A-50F4-F66C-7926-DCF1657ED678}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Crown.h" />
@@ -16,9 +25,34 @@
     <ClInclude Include="src\Crown\EntryPoint.h">
       <Filter>Crown</Filter>
     </ClInclude>
+    <ClInclude Include="src\Crown\Events\ApplicationEvent.h">
+      <Filter>Crown\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Crown\Events\Event.h">
+      <Filter>Crown\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Crown\Events\KeyEvent.h">
+      <Filter>Crown\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Crown\Events\MouseEvent.h">
+      <Filter>Crown\Events</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Crown\KeyCodes.h">
+      <Filter>Crown</Filter>
+    </ClInclude>
     <ClInclude Include="src\Crown\Log.h">
       <Filter>Crown</Filter>
     </ClInclude>
+    <ClInclude Include="src\Crown\MouseCodes.h">
+      <Filter>Crown</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Crown\Window.h">
+      <Filter>Crown</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Platform\Windows\WindowsWindow.h">
+      <Filter>Platform\Windows</Filter>
+    </ClInclude>
+    <ClInclude Include="src\crpch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Crown\Application.cpp">
@@ -27,5 +61,9 @@
     <ClCompile Include="src\Crown\Log.cpp">
       <Filter>Crown</Filter>
     </ClCompile>
+    <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp">
+      <Filter>Platform\Windows</Filter>
+    </ClCompile>
+    <ClCompile Include="src\crpch.cpp" />
   </ItemGroup>
 </Project>
