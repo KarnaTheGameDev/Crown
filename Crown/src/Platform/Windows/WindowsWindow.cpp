@@ -1,6 +1,8 @@
 #include "crpch.h"
 #include "WindowsWindow.h"
 
+#include <glad/gl.h>
+
 #include "Crown/Events/ApplicationEvent.h"
 #include "Crown/Events/MouseEvent.h"
 #include "Crown/Events/KeyEvent.h"
@@ -47,6 +49,11 @@ namespace Crown {
 
 		m_Window = glfwCreateWindow((int)props.Width, (int)props.Height, m_Data.Title.c_str(), nullptr, nullptr);
 		glfwMakeContextCurrent(m_Window);
+
+		int version = gladLoadGL(glfwGetProcAddress);
+		CROWN_CORE_ASSERT(version, "Failed to load OpenGL entry points!");
+		CROWN_CORE_INFO("OpenGL {0}.{1}", GLAD_VERSION_MAJOR(version), GLAD_VERSION_MINOR(version));
+
 		glfwSetWindowUserPointer(m_Window, &m_Data);
 		SetVSync(true);
 

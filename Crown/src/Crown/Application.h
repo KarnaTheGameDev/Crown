@@ -26,6 +26,10 @@ namespace Crown {
 		std::unique_ptr<Window> m_Window;
 		bool m_Running = true;
 
+		// ponytail: raw GL handles while there is exactly one thing to draw.
+		// Extract Shader/VertexBuffer/IndexBuffer once a second mesh exists.
+		unsigned int m_VertexArray = 0, m_VertexBuffer = 0, m_IndexBuffer = 0, m_Shader = 0;
+
 		static Application* s_Instance;
 	};
 
