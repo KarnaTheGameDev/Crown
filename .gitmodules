@@ -2,9 +2,6 @@
 [submodule "Crown/vendor/spdlog"]
 	path = Crown/vendor/spdlog
 	url = https://github.com/gabime/spdlog.git
-[submodule "Crown/vendor/GLFW/Crown/vendor/GLFW"]
-	path = Crown/vendor/GLFW/Crown/vendor/GLFW
-	url = https://github.com/TheCherno/glfw
-[submodule "glfw"]
-	path = glfw
+[submodule "Crown/vendor/GLFW"]
+	path = Crown/vendor/GLFW
 	url = https://github.com/TheCherno/glfw

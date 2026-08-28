@@ -25,7 +25,7 @@ namespace Crown {
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowCloseEvent>(CROWN_BIND_EVENT_FN(Application::OnWindowClose));
 
-		CROWN_CORE_TRACE("{0}", e);
+		CROWN_CORE_TRACE("{0}", e.ToString());
 	}
 
 	void Application::Run()

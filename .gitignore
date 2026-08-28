@@ -1,8 +1,10 @@
 # Directories
 
 .vs/
-bin/
-bin-int/
+/bin/
+/bin-int/
 
 # Files
 *.user
+# Tooling
+.claude/
