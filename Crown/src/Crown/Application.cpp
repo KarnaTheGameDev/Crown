@@ -6,6 +6,7 @@
 #include "Crown/Renderer/OrthographicCamera.h"
 #include "Crown/Renderer/Texture2D.h"
 #include "Crown/Renderer/Framebuffer.h"
+#include "Crown/Scene/SceneSerializer.h"
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -24,6 +25,8 @@ namespace Crown {
 
 	// The sprite atlas is a square grid of this many cells per side.
 	static constexpr int s_AtlasCells = 4;
+
+	static constexpr const char* s_ScenePath = "assets/scenes/scene.crown";
 
 	namespace {
 
@@ -299,6 +302,14 @@ namespace Crown {
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
 			ImGui::DockSpaceOverViewport();
+
+			if (ImGui::GetIO().KeyCtrl)
+			{
+				if (ImGui::IsKeyPressed(ImGuiKey_S, false))
+					SaveScene(m_Entities, s_ScenePath);
+				if (ImGui::IsKeyPressed(ImGuiKey_O, false) && LoadScene(m_Entities, s_ScenePath))
+					m_Selected = -1;
+			}
 			{
 				const glm::vec3& pos = m_Camera->GetPosition();
 				ImGui::SetNextWindowPos(ImVec2(1012.0f, 30.0f), ImGuiCond_FirstUseEver);
@@ -331,6 +342,12 @@ namespace Crown {
 					// Deleting the last row would leave the index past the end.
 					m_Selected = m_Entities.empty() ? -1 : std::min(m_Selected, (int)m_Entities.size() - 1);
 				}
+				ImGui::SameLine();
+				if (ImGui::Button("Save"))
+					SaveScene(m_Entities, s_ScenePath);
+				ImGui::SameLine();
+				if (ImGui::Button("Load") && LoadScene(m_Entities, s_ScenePath))
+					m_Selected = -1;          // indices refer to the old scene
 				ImGui::Separator();
 
 				for (int i = 0; i < (int)m_Entities.size(); i++)

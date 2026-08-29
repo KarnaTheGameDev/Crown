@@ -177,6 +177,7 @@
     <ClInclude Include="src\Crown\Renderer\Shader.h" />
     <ClInclude Include="src\Crown\Renderer\Texture2D.h" />
     <ClInclude Include="src\Crown\Scene\Entity.h" />
+    <ClInclude Include="src\Crown\Scene\SceneSerializer.h" />
     <ClInclude Include="src\Crown\Window.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\crpch.h" />
@@ -188,6 +189,7 @@
     <ClCompile Include="src\Crown\Renderer\OrthographicCamera.cpp" />
     <ClCompile Include="src\Crown\Renderer\Shader.cpp" />
     <ClCompile Include="src\Crown\Renderer\Texture2D.cpp" />
+    <ClCompile Include="src\Crown\Scene\SceneSerializer.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\crpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
