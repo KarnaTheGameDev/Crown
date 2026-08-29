@@ -109,26 +109,16 @@ namespace Crown {
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(CROWN_BIND_EVENT_FN(Application::OnEvent));
 
-		float triangleVerts[] = {
-			// position            colour             uv
-			-0.5f, -0.5f, 0.0f,   0.9f, 0.2f, 0.3f,   0.0f, 0.0f,
-			 0.5f, -0.5f, 0.0f,   0.2f, 0.8f, 0.4f,   1.0f, 0.0f,
-			 0.0f,  0.5f, 0.0f,   0.3f, 0.4f, 0.9f,   0.5f, 1.0f
-		};
-		unsigned int triangleIndices[] = { 0, 1, 2 };
-		auto tri = CreateMesh(triangleVerts, sizeof(triangleVerts), triangleIndices, sizeof(triangleIndices));
-		m_TriangleVA = tri.VA; m_TriangleVB = tri.VB; m_TriangleIB = tri.IB;
-
-		float squareVerts[] = {
+		float quadVerts[] = {
 			// position              colour                  uv
 			-0.75f, -0.75f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f,
 			 0.75f, -0.75f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f,
 			 0.75f,  0.75f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f,
 			-0.75f,  0.75f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f
 		};
-		unsigned int squareIndices[] = { 0, 1, 2, 2, 3, 0 };
-		auto square = CreateMesh(squareVerts, sizeof(squareVerts), squareIndices, sizeof(squareIndices));
-		m_SquareVA = square.VA; m_SquareVB = square.VB; m_SquareIB = square.IB;
+		unsigned int quadIndices[] = { 0, 1, 2, 2, 3, 0 };
+		auto quad = CreateMesh(quadVerts, sizeof(quadVerts), quadIndices, sizeof(quadIndices));
+		m_QuadVA = quad.VA; m_QuadVB = quad.VB; m_QuadIB = quad.IB;
 
 		const std::string vertexSrc = R"(
 			#version 330 core
@@ -159,6 +149,7 @@ namespace Crown {
 			// xy = atlas cell origin, zw = cell size, both in UV space.
 			// (0,0,1,1) samples the whole texture.
 			uniform vec4 u_TexRect;
+			uniform vec4 u_Tint;
 
 			out vec4 color;
 			void main()
@@ -166,7 +157,7 @@ namespace Crown {
 				// Binding a 1x1 white texture makes this pure vertex colour, so
 				// textured and untextured geometry share one shader.
 				vec2 uv = u_TexRect.xy + v_TexCoord * u_TexRect.zw;
-				color = texture(u_Texture, uv) * vec4(v_Color, 1.0);
+				color = texture(u_Texture, uv) * vec4(v_Color, 1.0) * u_Tint;
 			}
 		)";
 
@@ -175,8 +166,7 @@ namespace Crown {
 		m_Shader->SetInt("u_Texture", 0);
 
 		m_Texture = std::make_unique<Texture2D>("assets/textures/atlas.png");
-		m_WhiteTexture = std::make_unique<Texture2D>();
-
+		
 		// The checkerboard has alpha, so blending has to be on for it to read
 		// as a texture rather than a black-fringed block.
 		glEnable(GL_BLEND);
@@ -197,6 +187,20 @@ namespace Crown {
 		ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)m_Window->GetNativeWindow(), true);
 		ImGui_ImplOpenGL3_Init("#version 330");
 
+		// Seed a scene. Same grid as before, but as data that can be edited.
+		for (int y = 0; y < 12; y++)
+		{
+			for (int x = 0; x < 20; x++)
+			{
+				Entity e;
+				e.Name = "Sprite " + std::to_string(y * 20 + x);
+				e.Position = { x * 0.15f - 1.425f, y * 0.15f - 0.825f, 0.0f };
+				e.Scale = { 0.09f, 0.09f };
+				e.AtlasCell = (x + y * 3) % (s_AtlasCells * s_AtlasCells);
+				m_Entities.push_back(e);
+			}
+		}
+
 		CROWN_CORE_INFO("WASD moves the camera, Q/E rotates it.");
 	}
 
@@ -206,13 +210,9 @@ namespace Crown {
 		ImGui_ImplGlfw_Shutdown();
 		ImGui::DestroyContext();
 
-		glDeleteBuffers(1, &m_TriangleIB);
-		glDeleteBuffers(1, &m_TriangleVB);
-		glDeleteVertexArrays(1, &m_TriangleVA);
-
-		glDeleteBuffers(1, &m_SquareIB);
-		glDeleteBuffers(1, &m_SquareVB);
-		glDeleteVertexArrays(1, &m_SquareVA);
+		glDeleteBuffers(1, &m_QuadIB);
+		glDeleteBuffers(1, &m_QuadVB);
+		glDeleteVertexArrays(1, &m_QuadVA);
 	}
 
 	void Application::OnEvent(Event& e)
@@ -270,37 +270,26 @@ namespace Crown {
 			m_Shader->Bind();
 			m_Shader->SetMat4("u_ViewProjection", m_Camera->GetViewProjection());
 
-			// One mesh, many transforms: this is what the model matrix buys.
-			// Quad spans 1.5 units, so scale 0.06 makes it 0.09 wide and the
-			// 0.15 spacing leaves a visible gap. Grid fills the 3.2 x 1.8 view.
-			glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.06f));
+			glBindVertexArray(m_QuadVA);
 			m_Texture->Bind(0);
-			glBindVertexArray(m_SquareVA);
-			for (int y = 0; y < 12; y++)
+
+			const float cw = 1.0f / s_AtlasCells;
+			for (const Entity& e : m_Entities)
 			{
-				for (int x = 0; x < 20; x++)
-				{
-					glm::vec3 pos(x * 0.15f - 1.425f, y * 0.15f - 0.825f, 0.0f);
-					m_Shader->SetMat4("u_Transform", glm::translate(glm::mat4(1.0f), pos) * scale);
+				glm::mat4 transform = glm::translate(glm::mat4(1.0f), e.Position)
+					* glm::rotate(glm::mat4(1.0f), glm::radians(e.Rotation), glm::vec3(0, 0, 1))
+					* glm::scale(glm::mat4(1.0f), glm::vec3(e.Scale, 1.0f));
+				m_Shader->SetMat4("u_Transform", transform);
 
-					// ponytail: cell -> UV rect is two lines, so no SubTexture2D class
-					// until something needs to pass a sprite around by name.
-					int cell = (x + y * 3) % (s_AtlasCells * s_AtlasCells);
-					float cw = 1.0f / s_AtlasCells;
-					// Atlas row 0 is the texture's top row, but v = 0 is its bottom.
-					float u = (cell % s_AtlasCells) * cw;
-					float v = 1.0f - cw - (cell / s_AtlasCells) * cw;
-					m_Shader->SetFloat4("u_TexRect", { u, v, cw, cw });
+				// Atlas row 0 is the texture's top row, but v = 0 is its bottom.
+				int cell = e.AtlasCell % (s_AtlasCells * s_AtlasCells);
+				float u = (cell % s_AtlasCells) * cw;
+				float v = 1.0f - cw - (cell / s_AtlasCells) * cw;
+				m_Shader->SetFloat4("u_TexRect", { u, v, cw, cw });
+				m_Shader->SetFloat4("u_Tint", e.Tint);
 
-					glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
-				}
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 			}
-
-			m_Shader->SetMat4("u_Transform", glm::mat4(1.0f));
-			m_Shader->SetFloat4("u_TexRect", { 0.0f, 0.0f, 1.0f, 1.0f });
-			m_WhiteTexture->Bind(0);         // white => triangle keeps pure vertex colour
-			glBindVertexArray(m_TriangleVA);
-			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
 
 			m_Framebuffer->Unbind();
 			glClearColor(0.05f, 0.05f, 0.06f, 1.0f);
@@ -312,14 +301,70 @@ namespace Crown {
 			ImGui::DockSpaceOverViewport();
 			{
 				const glm::vec3& pos = m_Camera->GetPosition();
+				ImGui::SetNextWindowPos(ImVec2(1012.0f, 30.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(250.0f, 200.0f), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Crown");
 				ImGui::Text("%.1f FPS (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 				ImGui::Separator();
 				ImGui::ColorEdit3("Clear colour", m_ClearColor);
 				ImGui::SliderFloat("Camera speed", &m_CameraSpeed, 0.1f, 5.0f);
 				ImGui::Text("Camera  x %.2f  y %.2f  rot %.1f", pos.x, pos.y, m_Camera->GetRotation());
-				ImGui::Text("Quads drawn: 240");
+				ImGui::Text("Entities: %zu", m_Entities.size());
 				ImGui::Text("Viewport %ux%u", m_ViewportWidth, m_ViewportHeight);
+				ImGui::End();
+
+				ImGui::SetNextWindowPos(ImVec2(10.0f, 30.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(220.0f, 400.0f), ImGuiCond_FirstUseEver);
+				ImGui::Begin("Hierarchy");
+				if (ImGui::Button("Add"))
+				{
+					Entity e;
+					e.Name = "Entity " + std::to_string(m_Entities.size());
+					e.Scale = { 0.15f, 0.15f };
+					m_Entities.push_back(e);
+					m_Selected = (int)m_Entities.size() - 1;
+				}
+				ImGui::SameLine();
+				if (ImGui::Button("Delete") && m_Selected >= 0)
+				{
+					m_Entities.erase(m_Entities.begin() + m_Selected);
+					// Deleting the last row would leave the index past the end.
+					m_Selected = m_Entities.empty() ? -1 : std::min(m_Selected, (int)m_Entities.size() - 1);
+				}
+				ImGui::Separator();
+
+				for (int i = 0; i < (int)m_Entities.size(); i++)
+				{
+					// Names repeat, so the index disambiguates the widget id.
+					ImGui::PushID(i);
+					if (ImGui::Selectable(m_Entities[i].Name.c_str(), m_Selected == i))
+						m_Selected = i;
+					ImGui::PopID();
+				}
+				ImGui::End();
+
+				ImGui::SetNextWindowPos(ImVec2(10.0f, 440.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(220.0f, 250.0f), ImGuiCond_FirstUseEver);
+				ImGui::Begin("Properties");
+				if (m_Selected >= 0 && m_Selected < (int)m_Entities.size())
+				{
+					Entity& e = m_Entities[m_Selected];
+
+					char name[128];
+					std::snprintf(name, sizeof(name), "%s", e.Name.c_str());
+					if (ImGui::InputText("Name", name, sizeof(name)))
+						e.Name = name;
+
+					ImGui::DragFloat3("Position", &e.Position.x, 0.01f);
+					ImGui::DragFloat("Rotation", &e.Rotation, 1.0f);
+					ImGui::DragFloat2("Scale", &e.Scale.x, 0.005f, 0.001f, 10.0f);
+					ImGui::SliderInt("Atlas cell", &e.AtlasCell, 0, s_AtlasCells * s_AtlasCells - 1);
+					ImGui::ColorEdit4("Tint", &e.Tint.x);
+				}
+				else
+				{
+					ImGui::TextDisabled("Nothing selected");
+				}
 				ImGui::End();
 
 				// No padding, or the scene sits inset from the panel edge and the
@@ -328,7 +373,8 @@ namespace Crown {
 				// Without an explicit first size this window collapses: it sizes
 				// itself to its content, and its content is sized to the space
 				// available inside it.
-				ImGui::SetNextWindowSize(ImVec2(960.0f, 540.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowPos(ImVec2(240.0f, 30.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(760.0f, 470.0f), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Viewport");
 				ImVec2 avail = ImGui::GetContentRegionAvail();
 				m_ViewportWidth  = (unsigned int)(avail.x > 0.0f ? avail.x : 0.0f);

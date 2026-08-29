@@ -178,7 +178,8 @@ project "Sandbox"
 	includedirs
 	{
 		"Crown/vendor/spdlog/include",
-		"Crown/src"
+		"Crown/src",
+		"%{IncludeDir.glm}"
 	}
 
 	links

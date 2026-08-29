@@ -10,6 +10,9 @@
     <Filter Include="Crown\Renderer">
       <UniqueIdentifier>{74A83A51-6076-2E57-490A-9F7D35770ABC}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Crown\Scene">
+      <UniqueIdentifier>{AB542F7B-170A-A870-A0FE-A1470CB39E74}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Platform">
       <UniqueIdentifier>{2AC788B4-1694-E3BF-3FAD-D1672BD9184E}</UniqueIdentifier>
     </Filter>
@@ -60,6 +63,9 @@
     </ClInclude>
     <ClInclude Include="src\Crown\Renderer\Texture2D.h">
       <Filter>Crown\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="src\Crown\Scene\Entity.h">
+      <Filter>Crown\Scene</Filter>
     </ClInclude>
     <ClInclude Include="src\Crown\Window.h">
       <Filter>Crown</Filter>

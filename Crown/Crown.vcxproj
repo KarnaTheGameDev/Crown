@@ -176,6 +176,7 @@
     <ClInclude Include="src\Crown\Renderer\OrthographicCamera.h" />
     <ClInclude Include="src\Crown\Renderer\Shader.h" />
     <ClInclude Include="src\Crown\Renderer\Texture2D.h" />
+    <ClInclude Include="src\Crown\Scene\Entity.h" />
     <ClInclude Include="src\Crown\Window.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\crpch.h" />

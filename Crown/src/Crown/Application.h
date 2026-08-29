@@ -4,6 +4,9 @@
 #include "Window.h"
 #include "Events/Event.h"
 #include "Events/ApplicationEvent.h"
+#include "Scene/Entity.h"
+
+#include <vector>
 
 namespace Crown {
 
@@ -31,10 +34,12 @@ namespace Crown {
 		std::unique_ptr<Window> m_Window;
 		bool m_Running = true;
 
-		// ponytail: raw GL handles for two hardcoded meshes. Buffer/VertexArray
-		// classes go in when meshes stop being hardcoded, not before.
-		unsigned int m_TriangleVA = 0, m_TriangleVB = 0, m_TriangleIB = 0;
-		unsigned int m_SquareVA = 0, m_SquareVB = 0, m_SquareIB = 0;
+		// ponytail: one shared quad mesh, raw GL handles. A VertexArray class
+		// goes in when there is more than one mesh again.
+		unsigned int m_QuadVA = 0, m_QuadVB = 0, m_QuadIB = 0;
+
+		std::vector<Entity> m_Entities;
+		int m_Selected = -1;               // index into m_Entities, -1 for none
 
 		// Driven by the debug UI. Plain floats so glm stays out of this header.
 		float m_ClearColor[3] = { 0.1f, 0.1f, 0.15f };
@@ -43,7 +48,6 @@ namespace Crown {
 		std::unique_ptr<Shader> m_Shader;
 		std::unique_ptr<OrthographicCamera> m_Camera;
 		std::unique_ptr<Texture2D> m_Texture;
-		std::unique_ptr<Texture2D> m_WhiteTexture;
 		std::unique_ptr<Framebuffer> m_Framebuffer;
 
 		// Size of the viewport panel, which now drives the render target
