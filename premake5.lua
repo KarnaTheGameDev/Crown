@@ -16,6 +16,7 @@ IncludeDir["GLFW"] = "Crown/vendor/GLFW/include"
 IncludeDir["Glad"] = "Crown/vendor/Glad/include"
 IncludeDir["glm"] = "Crown/vendor/glm"
 IncludeDir["ImGui"] = "Crown/vendor/imgui"
+IncludeDir["stb"] = "Crown/vendor/stb"
 
 include "Crown/vendor/GLFW"
 
@@ -117,7 +118,8 @@ project "Crown"
 		"%{IncludeDir.Glad}",
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
-		"%{IncludeDir.ImGui}/backends"
+		"%{IncludeDir.ImGui}/backends",
+		"%{IncludeDir.stb}"
 	}
 
 	links
@@ -159,6 +161,8 @@ project "Crown"
 
 project "Sandbox"
 	location "Sandbox"
+	-- assets/ paths are relative to the workspace root
+	debugdir "%{wks.location}"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"

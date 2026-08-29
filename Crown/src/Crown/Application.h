@@ -9,6 +9,7 @@ namespace Crown {
 
 	class Shader;
 	class OrthographicCamera;
+	class Texture2D;
 
 	class CROWN_API Application
 	{
@@ -41,6 +42,8 @@ namespace Crown {
 
 		std::unique_ptr<Shader> m_Shader;
 		std::unique_ptr<OrthographicCamera> m_Camera;
+		std::unique_ptr<Texture2D> m_Texture;
+		std::unique_ptr<Texture2D> m_WhiteTexture;
 
 		static Application* s_Instance;
 	};

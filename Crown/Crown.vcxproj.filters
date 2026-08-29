@@ -55,6 +55,9 @@
     <ClInclude Include="src\Crown\Renderer\Shader.h">
       <Filter>Crown\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Crown\Renderer\Texture2D.h">
+      <Filter>Crown\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Crown\Window.h">
       <Filter>Crown</Filter>
     </ClInclude>
@@ -74,6 +77,9 @@
       <Filter>Crown\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Crown\Renderer\Shader.cpp">
+      <Filter>Crown\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Crown\Renderer\Texture2D.cpp">
       <Filter>Crown\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp">

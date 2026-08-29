@@ -17,6 +17,7 @@ namespace Crown {
 		void Unbind() const;
 
 		void SetMat4(const std::string& name, const glm::mat4& value) const;
+		void SetInt(const std::string& name, int value) const;
 
 	private:
 		// Returns 0 and logs the driver's message if the stage does not compile.

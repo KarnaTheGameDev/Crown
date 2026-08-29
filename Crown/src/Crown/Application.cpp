@@ -4,6 +4,7 @@
 #include "Crown/Log.h"
 #include "Crown/Renderer/Shader.h"
 #include "Crown/Renderer/OrthographicCamera.h"
+#include "Crown/Renderer/Texture2D.h"
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -24,8 +25,8 @@ namespace Crown {
 
 		struct MeshHandles { unsigned int VA, VB, IB; };
 
-		// Uploads one interleaved position+colour mesh. Layout is fixed at
-		// vec3 position / vec3 colour because both meshes here use it.
+		// Uploads one interleaved mesh. Layout is fixed at
+		// vec3 position / vec3 colour / vec2 uv because both meshes use it.
 		MeshHandles CreateMesh(const float* verts, size_t vertBytes,
 		                       const unsigned int* indices, size_t indexBytes)
 		{
@@ -38,10 +39,13 @@ namespace Crown {
 			glBindBuffer(GL_ARRAY_BUFFER, m.VB);
 			glBufferData(GL_ARRAY_BUFFER, vertBytes, verts, GL_STATIC_DRAW);
 
+			const GLsizei stride = 8 * sizeof(float);
 			glEnableVertexAttribArray(0);
-			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (const void*)0);
+			glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, stride, (const void*)0);
 			glEnableVertexAttribArray(1);
-			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (const void*)(3 * sizeof(float)));
+			glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, stride, (const void*)(3 * sizeof(float)));
+			glEnableVertexAttribArray(2);
+			glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, stride, (const void*)(6 * sizeof(float)));
 
 			glGenBuffers(1, &m.IB);
 			glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, m.IB);
@@ -61,19 +65,21 @@ namespace Crown {
 		m_Window->SetEventCallback(CROWN_BIND_EVENT_FN(Application::OnEvent));
 
 		float triangleVerts[] = {
-			-0.5f, -0.5f, 0.0f,   0.9f, 0.2f, 0.3f,
-			 0.5f, -0.5f, 0.0f,   0.2f, 0.8f, 0.4f,
-			 0.0f,  0.5f, 0.0f,   0.3f, 0.4f, 0.9f
+			// position            colour             uv
+			-0.5f, -0.5f, 0.0f,   0.9f, 0.2f, 0.3f,   0.0f, 0.0f,
+			 0.5f, -0.5f, 0.0f,   0.2f, 0.8f, 0.4f,   1.0f, 0.0f,
+			 0.0f,  0.5f, 0.0f,   0.3f, 0.4f, 0.9f,   0.5f, 1.0f
 		};
 		unsigned int triangleIndices[] = { 0, 1, 2 };
 		auto tri = CreateMesh(triangleVerts, sizeof(triangleVerts), triangleIndices, sizeof(triangleIndices));
 		m_TriangleVA = tri.VA; m_TriangleVB = tri.VB; m_TriangleIB = tri.IB;
 
 		float squareVerts[] = {
-			-0.75f, -0.75f, 0.0f,   0.25f, 0.28f, 0.34f,
-			 0.75f, -0.75f, 0.0f,   0.25f, 0.28f, 0.34f,
-			 0.75f,  0.75f, 0.0f,   0.20f, 0.22f, 0.28f,
-			-0.75f,  0.75f, 0.0f,   0.20f, 0.22f, 0.28f
+			// position              colour                  uv
+			-0.75f, -0.75f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 0.0f,
+			 0.75f, -0.75f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 0.0f,
+			 0.75f,  0.75f, 0.0f,   1.0f, 1.0f, 1.0f,   1.0f, 1.0f,
+			-0.75f,  0.75f, 0.0f,   1.0f, 1.0f, 1.0f,   0.0f, 1.0f
 		};
 		unsigned int squareIndices[] = { 0, 1, 2, 2, 3, 0 };
 		auto square = CreateMesh(squareVerts, sizeof(squareVerts), squareIndices, sizeof(squareIndices));
@@ -83,14 +89,17 @@ namespace Crown {
 			#version 330 core
 			layout(location = 0) in vec3 a_Position;
 			layout(location = 1) in vec3 a_Color;
+			layout(location = 2) in vec2 a_TexCoord;
 
 			uniform mat4 u_ViewProjection;
 			uniform mat4 u_Transform;
 
 			out vec3 v_Color;
+			out vec2 v_TexCoord;
 			void main()
 			{
 				v_Color = a_Color;
+				v_TexCoord = a_TexCoord;
 				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);
 			}
 		)";
@@ -98,14 +107,30 @@ namespace Crown {
 		const std::string fragmentSrc = R"(
 			#version 330 core
 			in vec3 v_Color;
+			in vec2 v_TexCoord;
+
+			uniform sampler2D u_Texture;
+
 			out vec4 color;
 			void main()
 			{
-				color = vec4(v_Color, 1.0);
+				// Binding a 1x1 white texture makes this pure vertex colour, so
+				// textured and untextured geometry share one shader.
+				color = texture(u_Texture, v_TexCoord) * vec4(v_Color, 1.0);
 			}
 		)";
 
 		m_Shader = std::make_unique<Shader>(vertexSrc, fragmentSrc);
+		m_Shader->Bind();
+		m_Shader->SetInt("u_Texture", 0);
+
+		m_Texture = std::make_unique<Texture2D>("assets/textures/checkerboard.png");
+		m_WhiteTexture = std::make_unique<Texture2D>();
+
+		// The checkerboard has alpha, so blending has to be on for it to read
+		// as a texture rather than a black-fringed block.
+		glEnable(GL_BLEND);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
 		float aspect = (float)m_Window->GetWidth() / (float)m_Window->GetHeight();
 		m_Camera = std::make_unique<OrthographicCamera>(
@@ -185,6 +210,7 @@ namespace Crown {
 			// Quad spans 1.5 units, so scale 0.06 makes it 0.09 wide and the
 			// 0.15 spacing leaves a visible gap. Grid fills the 3.2 x 1.8 view.
 			glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.06f));
+			m_Texture->Bind(0);
 			glBindVertexArray(m_SquareVA);
 			for (int y = 0; y < 12; y++)
 			{
@@ -197,6 +223,7 @@ namespace Crown {
 			}
 
 			m_Shader->SetMat4("u_Transform", glm::mat4(1.0f));
+			m_WhiteTexture->Bind(0);         // white => triangle keeps pure vertex colour
 			glBindVertexArray(m_TriangleVA);
 			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
 
