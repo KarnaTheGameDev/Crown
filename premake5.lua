@@ -14,6 +14,7 @@ outputdir = "%{cfg.buildcfg}-%{cfg.system}-%{cfg.architecture}"
 IncludeDir = {}
 IncludeDir["GLFW"] = "Crown/vendor/GLFW/include"
 IncludeDir["Glad"] = "Crown/vendor/Glad/include"
+IncludeDir["glm"] = "Crown/vendor/glm"
 
 include "Crown/vendor/GLFW"
 
@@ -72,7 +73,8 @@ project "Crown"
 		"%{prj.name}/src",
 		"%{prj.name}/vendor/spdlog/include",
 		"%{IncludeDir.GLFW}",
-		"%{IncludeDir.Glad}"
+		"%{IncludeDir.Glad}",
+		"%{IncludeDir.glm}"
 	}
 
 	links

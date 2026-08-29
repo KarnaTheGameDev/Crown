@@ -7,6 +7,9 @@
 
 namespace Crown {
 
+	class Shader;
+	class OrthographicCamera;
+
 	class CROWN_API Application
 	{
 	public:
@@ -26,9 +29,13 @@ namespace Crown {
 		std::unique_ptr<Window> m_Window;
 		bool m_Running = true;
 
-		// ponytail: raw GL handles while there is exactly one thing to draw.
-		// Extract Shader/VertexBuffer/IndexBuffer once a second mesh exists.
-		unsigned int m_VertexArray = 0, m_VertexBuffer = 0, m_IndexBuffer = 0, m_Shader = 0;
+		// ponytail: raw GL handles for two hardcoded meshes. Buffer/VertexArray
+		// classes go in when meshes stop being hardcoded, not before.
+		unsigned int m_TriangleVA = 0, m_TriangleVB = 0, m_TriangleIB = 0;
+		unsigned int m_SquareVA = 0, m_SquareVB = 0, m_SquareIB = 0;
+
+		std::unique_ptr<Shader> m_Shader;
+		std::unique_ptr<OrthographicCamera> m_Camera;
 
 		static Application* s_Instance;
 	};
