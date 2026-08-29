@@ -21,6 +21,9 @@ namespace Crown {
 	// Half-height of the visible world, in world units.
 	static constexpr float s_CameraZoom = 0.9f;
 
+	// The sprite atlas is a square grid of this many cells per side.
+	static constexpr int s_AtlasCells = 4;
+
 	namespace {
 
 		struct MeshHandles { unsigned int VA, VB, IB; };
@@ -111,12 +114,17 @@ namespace Crown {
 
 			uniform sampler2D u_Texture;
 
+			// xy = atlas cell origin, zw = cell size, both in UV space.
+			// (0,0,1,1) samples the whole texture.
+			uniform vec4 u_TexRect;
+
 			out vec4 color;
 			void main()
 			{
 				// Binding a 1x1 white texture makes this pure vertex colour, so
 				// textured and untextured geometry share one shader.
-				color = texture(u_Texture, v_TexCoord) * vec4(v_Color, 1.0);
+				vec2 uv = u_TexRect.xy + v_TexCoord * u_TexRect.zw;
+				color = texture(u_Texture, uv) * vec4(v_Color, 1.0);
 			}
 		)";
 
@@ -124,7 +132,7 @@ namespace Crown {
 		m_Shader->Bind();
 		m_Shader->SetInt("u_Texture", 0);
 
-		m_Texture = std::make_unique<Texture2D>("assets/textures/checkerboard.png");
+		m_Texture = std::make_unique<Texture2D>("assets/textures/atlas.png");
 		m_WhiteTexture = std::make_unique<Texture2D>();
 
 		// The checkerboard has alpha, so blending has to be on for it to read
@@ -218,11 +226,22 @@ namespace Crown {
 				{
 					glm::vec3 pos(x * 0.15f - 1.425f, y * 0.15f - 0.825f, 0.0f);
 					m_Shader->SetMat4("u_Transform", glm::translate(glm::mat4(1.0f), pos) * scale);
+
+					// ponytail: cell -> UV rect is two lines, so no SubTexture2D class
+					// until something needs to pass a sprite around by name.
+					int cell = (x + y * 3) % (s_AtlasCells * s_AtlasCells);
+					float cw = 1.0f / s_AtlasCells;
+					// Atlas row 0 is the texture's top row, but v = 0 is its bottom.
+					float u = (cell % s_AtlasCells) * cw;
+					float v = 1.0f - cw - (cell / s_AtlasCells) * cw;
+					m_Shader->SetFloat4("u_TexRect", { u, v, cw, cw });
+
 					glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
 				}
 			}
 
 			m_Shader->SetMat4("u_Transform", glm::mat4(1.0f));
+			m_Shader->SetFloat4("u_TexRect", { 0.0f, 0.0f, 1.0f, 1.0f });
 			m_WhiteTexture->Bind(0);         // white => triangle keeps pure vertex colour
 			glBindVertexArray(m_TriangleVA);
 			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);

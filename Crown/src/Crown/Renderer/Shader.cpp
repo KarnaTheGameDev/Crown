@@ -78,6 +78,11 @@ namespace Crown {
 		glUniform1i(glGetUniformLocation(m_RendererID, name.c_str()), value);
 	}
 
+	void Shader::SetFloat4(const std::string& name, const glm::vec4& value) const
+	{
+		glUniform4f(glGetUniformLocation(m_RendererID, name.c_str()), value.x, value.y, value.z, value.w);
+	}
+
 	void Shader::SetMat4(const std::string& name, const glm::mat4& value) const
 	{
 		// ponytail: uniform locations are looked up per call. Cache them in a map
