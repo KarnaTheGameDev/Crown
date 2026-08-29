@@ -7,6 +7,7 @@
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
+#include <glm/gtc/matrix_transform.hpp>
 
 namespace Crown {
 
@@ -77,12 +78,13 @@ namespace Crown {
 			layout(location = 1) in vec3 a_Color;
 
 			uniform mat4 u_ViewProjection;
+			uniform mat4 u_Transform;
 
 			out vec3 v_Color;
 			void main()
 			{
 				v_Color = a_Color;
-				gl_Position = u_ViewProjection * vec4(a_Position, 1.0);
+				gl_Position = u_ViewProjection * u_Transform * vec4(a_Position, 1.0);
 			}
 		)";
 
@@ -155,9 +157,22 @@ namespace Crown {
 			m_Shader->Bind();
 			m_Shader->SetMat4("u_ViewProjection", m_Camera->GetViewProjection());
 
+			// One mesh, many transforms: this is what the model matrix buys.
+			// Quad spans 1.5 units, so scale 0.06 makes it 0.09 wide and the
+			// 0.15 spacing leaves a visible gap. Grid fills the 3.2 x 1.8 view.
+			glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(0.06f));
 			glBindVertexArray(m_SquareVA);
-			glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+			for (int y = 0; y < 12; y++)
+			{
+				for (int x = 0; x < 20; x++)
+				{
+					glm::vec3 pos(x * 0.15f - 1.425f, y * 0.15f - 0.825f, 0.0f);
+					m_Shader->SetMat4("u_Transform", glm::translate(glm::mat4(1.0f), pos) * scale);
+					glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
+				}
+			}
 
+			m_Shader->SetMat4("u_Transform", glm::mat4(1.0f));
 			glBindVertexArray(m_TriangleVA);
 			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
 
