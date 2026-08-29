@@ -9,6 +9,10 @@
 #include <GLFW/glfw3.h>
 #include <glm/gtc/matrix_transform.hpp>
 
+#include <imgui.h>
+#include <backends/imgui_impl_glfw.h>
+#include <backends/imgui_impl_opengl3.h>
+
 namespace Crown {
 
 	Application* Application::s_Instance = nullptr;
@@ -103,11 +107,23 @@ namespace Crown {
 		// 16:9 so the square does not stretch with the default window.
 		m_Camera = std::make_unique<OrthographicCamera>(-1.6f, 1.6f, -0.9f, 0.9f);
 
+		// ImGui chains onto the GLFW callbacks WindowsWindow already installed,
+		// so the engine's own event system keeps receiving everything.
+		IMGUI_CHECKVERSION();
+		ImGui::CreateContext();
+		ImGui::StyleColorsDark();
+		ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)m_Window->GetNativeWindow(), true);
+		ImGui_ImplOpenGL3_Init("#version 330");
+
 		CROWN_CORE_INFO("WASD moves the camera, Q/E rotates it.");
 	}
 
 	Application::~Application()
 	{
+		ImGui_ImplOpenGL3_Shutdown();
+		ImGui_ImplGlfw_Shutdown();
+		ImGui::DestroyContext();
+
 		glDeleteBuffers(1, &m_TriangleIB);
 		glDeleteBuffers(1, &m_TriangleVB);
 		glDeleteVertexArrays(1, &m_TriangleVA);
@@ -128,7 +144,6 @@ namespace Crown {
 		// ponytail: camera input polled straight from GLFW. An Input abstraction
 		// earns its place when a second platform exists.
 		GLFWwindow* window = (GLFWwindow*)m_Window->GetNativeWindow();
-		const float moveSpeed = 1.5f;      // world units per second
 		const float rotateSpeed = 90.0f;   // degrees per second
 
 		float lastTime = (float)glfwGetTime();
@@ -139,19 +154,23 @@ namespace Crown {
 			float dt = time - lastTime;
 			lastTime = time;
 
-			glm::vec3 position = m_Camera->GetPosition();
-			if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) position.x -= moveSpeed * dt;
-			if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) position.x += moveSpeed * dt;
-			if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) position.y -= moveSpeed * dt;
-			if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) position.y += moveSpeed * dt;
-			m_Camera->SetPosition(position);
+			// Typing into a slider must not also drive the camera.
+			if (!ImGui::GetIO().WantCaptureKeyboard)
+			{
+				glm::vec3 position = m_Camera->GetPosition();
+				if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) position.x -= m_CameraSpeed * dt;
+				if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) position.x += m_CameraSpeed * dt;
+				if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) position.y -= m_CameraSpeed * dt;
+				if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) position.y += m_CameraSpeed * dt;
+				m_Camera->SetPosition(position);
 
-			float rotation = m_Camera->GetRotation();
-			if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) rotation += rotateSpeed * dt;
-			if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) rotation -= rotateSpeed * dt;
-			m_Camera->SetRotation(rotation);
+				float rotation = m_Camera->GetRotation();
+				if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS) rotation += rotateSpeed * dt;
+				if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS) rotation -= rotateSpeed * dt;
+				m_Camera->SetRotation(rotation);
+			}
 
-			glClearColor(0.1f, 0.1f, 0.15f, 1.0f);
+			glClearColor(m_ClearColor[0], m_ClearColor[1], m_ClearColor[2], 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 
 			m_Shader->Bind();
@@ -175,6 +194,23 @@ namespace Crown {
 			m_Shader->SetMat4("u_Transform", glm::mat4(1.0f));
 			glBindVertexArray(m_TriangleVA);
 			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
+
+			ImGui_ImplOpenGL3_NewFrame();
+			ImGui_ImplGlfw_NewFrame();
+			ImGui::NewFrame();
+			{
+				const glm::vec3& pos = m_Camera->GetPosition();
+				ImGui::Begin("Crown");
+				ImGui::Text("%.1f FPS (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
+				ImGui::Separator();
+				ImGui::ColorEdit3("Clear colour", m_ClearColor);
+				ImGui::SliderFloat("Camera speed", &m_CameraSpeed, 0.1f, 5.0f);
+				ImGui::Text("Camera  x %.2f  y %.2f  rot %.1f", pos.x, pos.y, m_Camera->GetRotation());
+				ImGui::Text("Quads drawn: 240");
+				ImGui::End();
+			}
+			ImGui::Render();
+			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 			m_Window->OnUpdate();
 		}

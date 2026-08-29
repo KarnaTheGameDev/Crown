@@ -15,6 +15,7 @@ IncludeDir = {}
 IncludeDir["GLFW"] = "Crown/vendor/GLFW/include"
 IncludeDir["Glad"] = "Crown/vendor/Glad/include"
 IncludeDir["glm"] = "Crown/vendor/glm"
+IncludeDir["ImGui"] = "Crown/vendor/imgui"
 
 include "Crown/vendor/GLFW"
 
@@ -49,6 +50,46 @@ project "Glad"
 		optimize "on"
 
 
+project "ImGui"
+	location "Crown/vendor/imgui"
+	kind "StaticLib"
+	language "C++"
+	cppdialect "C++17"
+	staticruntime "off"
+
+	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+	-- Core plus only the two backends this engine uses.
+	files
+	{
+		"Crown/vendor/imgui/imgui.cpp",
+		"Crown/vendor/imgui/imgui_draw.cpp",
+		"Crown/vendor/imgui/imgui_tables.cpp",
+		"Crown/vendor/imgui/imgui_widgets.cpp",
+		"Crown/vendor/imgui/imgui_demo.cpp",
+		"Crown/vendor/imgui/backends/imgui_impl_glfw.cpp",
+		"Crown/vendor/imgui/backends/imgui_impl_opengl3.cpp"
+	}
+
+	includedirs
+	{
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.ImGui}/backends",
+		"%{IncludeDir.GLFW}"
+	}
+
+	filter "system:windows"
+		systemversion "latest"
+
+	filter "configurations:Debug"
+		runtime "Debug"
+		symbols "on"
+
+	filter "configurations:Release or Dist"
+		runtime "Release"
+		optimize "on"
+
 project "Crown"
 	location "Crown"
 	kind "SharedLib"
@@ -74,13 +115,16 @@ project "Crown"
 		"%{prj.name}/vendor/spdlog/include",
 		"%{IncludeDir.GLFW}",
 		"%{IncludeDir.Glad}",
-		"%{IncludeDir.glm}"
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.ImGui}",
+		"%{IncludeDir.ImGui}/backends"
 	}
 
 	links
 	{
 		"GLFW",
 		"Glad",
+		"ImGui",
 		"opengl32.lib"
 	}
 

@@ -34,6 +34,10 @@ namespace Crown {
 		unsigned int m_TriangleVA = 0, m_TriangleVB = 0, m_TriangleIB = 0;
 		unsigned int m_SquareVA = 0, m_SquareVB = 0, m_SquareIB = 0;
 
+		// Driven by the debug UI. Plain floats so glm stays out of this header.
+		float m_ClearColor[3] = { 0.1f, 0.1f, 0.15f };
+		float m_CameraSpeed = 1.5f;
+
 		std::unique_ptr<Shader> m_Shader;
 		std::unique_ptr<OrthographicCamera> m_Camera;
 
