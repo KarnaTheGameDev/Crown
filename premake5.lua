@@ -161,8 +161,6 @@ project "Crown"
 
 project "Sandbox"
 	location "Sandbox"
-	-- assets/ paths are relative to the workspace root
-	debugdir "%{wks.location}"
 	kind "ConsoleApp"
 	language "C++"
 	cppdialect "C++17"

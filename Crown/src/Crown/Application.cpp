@@ -27,6 +27,45 @@ namespace Crown {
 
 	namespace {
 
+		// The exe may be launched from bin/, from the debugger, or from a shipped
+		// folder, and each gives a different working directory. Anchor on the
+		// executable and walk up until assets/ turns up, so asset paths never
+		// depend on how the program was started. A shipped build with assets/
+		// beside the exe matches on the first iteration.
+		void SetWorkingDirectoryToAssetRoot()
+		{
+			namespace fs = std::filesystem;
+
+			wchar_t exePath[MAX_PATH]{};
+			if (GetModuleFileNameW(nullptr, exePath, MAX_PATH) == 0)
+			{
+				CROWN_CORE_WARN("Could not locate the executable; leaving working directory alone");
+				return;
+			}
+
+			std::error_code ec;
+			fs::path dir = fs::path(exePath).parent_path();
+			while (true)
+			{
+				if (fs::exists(dir / "assets", ec))
+				{
+					fs::current_path(dir, ec);
+					if (ec)
+						CROWN_CORE_WARN("Found assets at '{0}' but could not enter it", dir.string());
+					else
+						CROWN_CORE_INFO("Asset root: {0}", dir.string());
+					return;
+				}
+
+				fs::path parent = dir.parent_path();
+				if (parent == dir)          // reached the drive root
+					break;
+				dir = parent;
+			}
+
+			CROWN_CORE_WARN("No 'assets' directory found above the executable; textures will not load");
+		}
+
 		struct MeshHandles { unsigned int VA, VB, IB; };
 
 		// Uploads one interleaved mesh. Layout is fixed at
@@ -64,6 +103,8 @@ namespace Crown {
 	{
 		CROWN_CORE_ASSERT(!s_Instance, "Application already exists!");
 		s_Instance = this;
+
+		SetWorkingDirectoryToAssetRoot();
 
 		m_Window = std::unique_ptr<Window>(Window::Create());
 		m_Window->SetEventCallback(CROWN_BIND_EVENT_FN(Application::OnEvent));
