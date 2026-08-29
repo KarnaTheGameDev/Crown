@@ -17,6 +17,9 @@ namespace Crown {
 
 	Application* Application::s_Instance = nullptr;
 
+	// Half-height of the visible world, in world units.
+	static constexpr float s_CameraZoom = 0.9f;
+
 	namespace {
 
 		struct MeshHandles { unsigned int VA, VB, IB; };
@@ -104,8 +107,9 @@ namespace Crown {
 
 		m_Shader = std::make_unique<Shader>(vertexSrc, fragmentSrc);
 
-		// 16:9 so the square does not stretch with the default window.
-		m_Camera = std::make_unique<OrthographicCamera>(-1.6f, 1.6f, -0.9f, 0.9f);
+		float aspect = (float)m_Window->GetWidth() / (float)m_Window->GetHeight();
+		m_Camera = std::make_unique<OrthographicCamera>(
+			-aspect * s_CameraZoom, aspect * s_CameraZoom, -s_CameraZoom, s_CameraZoom);
 
 		// ImGui chains onto the GLFW callbacks WindowsWindow already installed,
 		// so the engine's own event system keeps receiving everything.
@@ -137,6 +141,7 @@ namespace Crown {
 	{
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowCloseEvent>(CROWN_BIND_EVENT_FN(Application::OnWindowClose));
+		dispatcher.Dispatch<WindowResizeEvent>(CROWN_BIND_EVENT_FN(Application::OnWindowResize));
 	}
 
 	void Application::Run()
@@ -214,6 +219,21 @@ namespace Crown {
 
 			m_Window->OnUpdate();
 		}
+	}
+
+	bool Application::OnWindowResize(WindowResizeEvent& e)
+	{
+		unsigned int w = e.GetWidth(), h = e.GetHeight();
+		if (w == 0 || h == 0)   // minimised: nothing to draw into, and h == 0 would divide by zero
+			return false;
+
+		glViewport(0, 0, w, h);
+
+		// Hold the vertical extent and widen horizontally, so geometry keeps its
+		// shape instead of stretching with the window.
+		float aspect = (float)w / (float)h;
+		m_Camera->SetProjection(-aspect * s_CameraZoom, aspect * s_CameraZoom, -s_CameraZoom, s_CameraZoom);
+		return false;   // let other listeners see the resize too
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)

@@ -11,6 +11,12 @@ namespace Crown {
 		m_ViewProjection = m_Projection * m_View;
 	}
 
+	void OrthographicCamera::SetProjection(float left, float right, float bottom, float top)
+	{
+		m_Projection = glm::ortho(left, right, bottom, top, -1.0f, 1.0f);
+		m_ViewProjection = m_Projection * m_View;
+	}
+
 	void OrthographicCamera::RecalculateView()
 	{
 		// The view matrix is the inverse of the camera's own transform: moving the
