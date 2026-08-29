@@ -5,6 +5,7 @@
 #include "Crown/Renderer/Shader.h"
 #include "Crown/Renderer/OrthographicCamera.h"
 #include "Crown/Renderer/Texture2D.h"
+#include "Crown/Renderer/Framebuffer.h"
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -140,7 +141,9 @@ namespace Crown {
 		glEnable(GL_BLEND);
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-		float aspect = (float)m_Window->GetWidth() / (float)m_Window->GetHeight();
+		m_Framebuffer = std::make_unique<Framebuffer>(m_ViewportWidth, m_ViewportHeight);
+
+		float aspect = (float)m_ViewportWidth / (float)m_ViewportHeight;
 		m_Camera = std::make_unique<OrthographicCamera>(
 			-aspect * s_CameraZoom, aspect * s_CameraZoom, -s_CameraZoom, s_CameraZoom);
 
@@ -148,6 +151,7 @@ namespace Crown {
 		// so the engine's own event system keeps receiving everything.
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
+		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 		ImGui::StyleColorsDark();
 		ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)m_Window->GetNativeWindow(), true);
 		ImGui_ImplOpenGL3_Init("#version 330");
@@ -174,7 +178,6 @@ namespace Crown {
 	{
 		EventDispatcher dispatcher(e);
 		dispatcher.Dispatch<WindowCloseEvent>(CROWN_BIND_EVENT_FN(Application::OnWindowClose));
-		dispatcher.Dispatch<WindowResizeEvent>(CROWN_BIND_EVENT_FN(Application::OnWindowResize));
 	}
 
 	void Application::Run()
@@ -192,6 +195,15 @@ namespace Crown {
 			float dt = time - lastTime;
 			lastTime = time;
 
+			// Track the viewport panel. Resize is a no-op when nothing changed.
+			if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
+			{
+				m_Framebuffer->Resize(m_ViewportWidth, m_ViewportHeight);
+				float aspect = (float)m_ViewportWidth / (float)m_ViewportHeight;
+				m_Camera->SetProjection(-aspect * s_CameraZoom, aspect * s_CameraZoom,
+				                        -s_CameraZoom, s_CameraZoom);
+			}
+
 			// Typing into a slider must not also drive the camera.
 			if (!ImGui::GetIO().WantCaptureKeyboard)
 			{
@@ -208,6 +220,9 @@ namespace Crown {
 				m_Camera->SetRotation(rotation);
 			}
 
+			// Scene renders into the framebuffer; the window itself only ever
+			// shows ImGui.
+			m_Framebuffer->Bind();
 			glClearColor(m_ClearColor[0], m_ClearColor[1], m_ClearColor[2], 1.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
 
@@ -246,9 +261,14 @@ namespace Crown {
 			glBindVertexArray(m_TriangleVA);
 			glDrawElements(GL_TRIANGLES, 3, GL_UNSIGNED_INT, nullptr);
 
+			m_Framebuffer->Unbind();
+			glClearColor(0.05f, 0.05f, 0.06f, 1.0f);
+			glClear(GL_COLOR_BUFFER_BIT);
+
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
+			ImGui::DockSpaceOverViewport();
 			{
 				const glm::vec3& pos = m_Camera->GetPosition();
 				ImGui::Begin("Crown");
@@ -258,28 +278,32 @@ namespace Crown {
 				ImGui::SliderFloat("Camera speed", &m_CameraSpeed, 0.1f, 5.0f);
 				ImGui::Text("Camera  x %.2f  y %.2f  rot %.1f", pos.x, pos.y, m_Camera->GetRotation());
 				ImGui::Text("Quads drawn: 240");
+				ImGui::Text("Viewport %ux%u", m_ViewportWidth, m_ViewportHeight);
 				ImGui::End();
+
+				// No padding, or the scene sits inset from the panel edge and the
+				// size we measure does not match what is displayed.
+				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+				// Without an explicit first size this window collapses: it sizes
+				// itself to its content, and its content is sized to the space
+				// available inside it.
+				ImGui::SetNextWindowSize(ImVec2(960.0f, 540.0f), ImGuiCond_FirstUseEver);
+				ImGui::Begin("Viewport");
+				ImVec2 avail = ImGui::GetContentRegionAvail();
+				m_ViewportWidth  = (unsigned int)(avail.x > 0.0f ? avail.x : 0.0f);
+				m_ViewportHeight = (unsigned int)(avail.y > 0.0f ? avail.y : 0.0f);
+
+				// v is flipped: GL's first texel row is the bottom of the image.
+				ImGui::Image((ImTextureID)m_Framebuffer->GetColorAttachment(),
+				             avail, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+				ImGui::End();
+				ImGui::PopStyleVar();
 			}
 			ImGui::Render();
 			ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
 			m_Window->OnUpdate();
 		}
-	}
-
-	bool Application::OnWindowResize(WindowResizeEvent& e)
-	{
-		unsigned int w = e.GetWidth(), h = e.GetHeight();
-		if (w == 0 || h == 0)   // minimised: nothing to draw into, and h == 0 would divide by zero
-			return false;
-
-		glViewport(0, 0, w, h);
-
-		// Hold the vertical extent and widen horizontally, so geometry keeps its
-		// shape instead of stretching with the window.
-		float aspect = (float)w / (float)h;
-		m_Camera->SetProjection(-aspect * s_CameraZoom, aspect * s_CameraZoom, -s_CameraZoom, s_CameraZoom);
-		return false;   // let other listeners see the resize too
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)

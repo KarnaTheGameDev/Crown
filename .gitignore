@@ -8,3 +8,6 @@
 *.user
 # Tooling
 .claude/
+
+# ImGui writes window layout next to the working directory
+imgui.ini

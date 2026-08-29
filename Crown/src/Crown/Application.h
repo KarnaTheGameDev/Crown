@@ -10,6 +10,7 @@ namespace Crown {
 	class Shader;
 	class OrthographicCamera;
 	class Texture2D;
+	class Framebuffer;
 
 	class CROWN_API Application
 	{
@@ -26,7 +27,6 @@ namespace Crown {
 		inline static Application& Get() { return *s_Instance; }
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
-		bool OnWindowResize(WindowResizeEvent& e);
 
 		std::unique_ptr<Window> m_Window;
 		bool m_Running = true;
@@ -44,6 +44,11 @@ namespace Crown {
 		std::unique_ptr<OrthographicCamera> m_Camera;
 		std::unique_ptr<Texture2D> m_Texture;
 		std::unique_ptr<Texture2D> m_WhiteTexture;
+		std::unique_ptr<Framebuffer> m_Framebuffer;
+
+		// Size of the viewport panel, which now drives the render target
+		// and the camera aspect instead of the window.
+		unsigned int m_ViewportWidth = 1280, m_ViewportHeight = 720;
 
 		static Application* s_Instance;
 	};
