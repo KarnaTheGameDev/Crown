@@ -1,4 +1,4 @@
-#include "crpch.h"
+﻿#include "crpch.h"
 #include "Application.h"
 
 #include "Crown/Log.h"
@@ -67,6 +67,27 @@ namespace Crown {
 			}
 
 			CROWN_CORE_WARN("No 'assets' directory found above the executable; textures will not load");
+		}
+
+		// The quad mesh spans -0.75..0.75 in model space; picking tests against
+		// that, so it has to track the vertex data below.
+		constexpr float s_QuadHalfExtent = 0.75f;
+
+		glm::mat4 EntityTransform(const Entity& e)
+		{
+			return glm::translate(glm::mat4(1.0f), e.Position)
+				* glm::rotate(glm::mat4(1.0f), glm::radians(e.Rotation), glm::vec3(0, 0, 1))
+				* glm::scale(glm::mat4(1.0f), glm::vec3(e.Scale, 1.0f));
+		}
+
+		// Screen pixel inside the viewport image -> world position on z = 0.
+		glm::vec2 ViewportToWorld(ImVec2 pixel, ImVec2 origin, ImVec2 size, const glm::mat4& invViewProj)
+		{
+			glm::vec2 ndc(
+				2.0f * (pixel.x - origin.x) / size.x - 1.0f,
+				1.0f - 2.0f * (pixel.y - origin.y) / size.y);       // ImGui y grows down, NDC y grows up
+			glm::vec4 world = invViewProj * glm::vec4(ndc, 0.0f, 1.0f);
+			return glm::vec2(world);
 		}
 
 		struct MeshHandles { unsigned int VA, VB, IB; };
@@ -279,10 +300,7 @@ namespace Crown {
 			const float cw = 1.0f / s_AtlasCells;
 			for (const Entity& e : m_Entities)
 			{
-				glm::mat4 transform = glm::translate(glm::mat4(1.0f), e.Position)
-					* glm::rotate(glm::mat4(1.0f), glm::radians(e.Rotation), glm::vec3(0, 0, 1))
-					* glm::scale(glm::mat4(1.0f), glm::vec3(e.Scale, 1.0f));
-				m_Shader->SetMat4("u_Transform", transform);
+				m_Shader->SetMat4("u_Transform", EntityTransform(e));
 
 				// Atlas row 0 is the texture's top row, but v = 0 is its bottom.
 				int cell = e.AtlasCell % (s_AtlasCells * s_AtlasCells);
@@ -400,6 +418,55 @@ namespace Crown {
 				// v is flipped: GL's first texel row is the bottom of the image.
 				ImGui::Image((ImTextureID)m_Framebuffer->GetColorAttachment(),
 				             avail, ImVec2(0.0f, 1.0f), ImVec2(1.0f, 0.0f));
+
+				// Click to select, drag to move. Both work in world space via the
+				// same inverse view-projection, so they stay correct under camera
+				// pan, zoom and rotation without special-casing any of them.
+				if (avail.x > 0.0f && avail.y > 0.0f)
+				{
+					ImVec2 origin = ImGui::GetItemRectMin();
+					glm::mat4 invViewProj = glm::inverse(m_Camera->GetViewProjection());
+
+					if (ImGui::IsItemHovered() && ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+					{
+						glm::vec2 world = ViewportToWorld(ImGui::GetMousePos(), origin, avail, invViewProj);
+
+						m_Selected = -1;
+						// Back to front: the last drawn entity is the one on top.
+						for (int i = (int)m_Entities.size() - 1; i >= 0; i--)
+						{
+							glm::vec4 local = glm::inverse(EntityTransform(m_Entities[i])) * glm::vec4(world, 0.0f, 1.0f);
+							if (std::abs(local.x) <= s_QuadHalfExtent && std::abs(local.y) <= s_QuadHalfExtent)
+							{
+								m_Selected = i;
+								break;
+							}
+						}
+						m_DraggingEntity = m_Selected >= 0;
+					}
+
+					if (m_DraggingEntity && ImGui::IsMouseDragging(ImGuiMouseButton_Left))
+					{
+						// Unproject both ends of the drag rather than scaling pixels
+						// by a zoom factor, so a rotated camera still moves the
+						// entity the direction the mouse went.
+						ImVec2 now = ImGui::GetMousePos();
+						ImVec2 delta = ImGui::GetMouseDragDelta(ImGuiMouseButton_Left);
+						ImVec2 before(now.x - delta.x, now.y - delta.y);
+
+						glm::vec2 moved = ViewportToWorld(now, origin, avail, invViewProj)
+						                - ViewportToWorld(before, origin, avail, invViewProj);
+
+						if (m_Selected >= 0 && m_Selected < (int)m_Entities.size())
+							m_Entities[m_Selected].Position += glm::vec3(moved, 0.0f);
+
+						ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
+					}
+
+					if (ImGui::IsMouseReleased(ImGuiMouseButton_Left))
+						m_DraggingEntity = false;
+				}
+
 				ImGui::End();
 				ImGui::PopStyleVar();
 			}

@@ -40,6 +40,7 @@ namespace Crown {
 
 		std::vector<Entity> m_Entities;
 		int m_Selected = -1;               // index into m_Entities, -1 for none
+		bool m_DraggingEntity = false;     // drag must have started on the viewport
 
 		// Driven by the debug UI. Plain floats so glm stays out of this header.
 		float m_ClearColor[3] = { 0.1f, 0.1f, 0.15f };
