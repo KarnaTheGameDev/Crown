@@ -23,6 +23,11 @@ namespace Crown {
 
 		void Run();
 
+		// Overridden by the client to run its own code each frame.
+		virtual void OnUpdate(float deltaTime) {}
+
+		std::vector<Entity>& GetEntities() { return m_Entities; }
+
 		void OnEvent(Event& e);
 
 		inline Window& GetWindow() { return *m_Window; }

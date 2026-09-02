@@ -43,6 +43,9 @@
     <ClInclude Include="src\Crown\Events\MouseEvent.h">
       <Filter>Crown\Events</Filter>
     </ClInclude>
+    <ClInclude Include="src\Crown\Input.h">
+      <Filter>Crown</Filter>
+    </ClInclude>
     <ClInclude Include="src\Crown\KeyCodes.h">
       <Filter>Crown</Filter>
     </ClInclude>
@@ -80,6 +83,9 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Crown\Application.cpp">
+      <Filter>Crown</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Crown\Input.cpp">
       <Filter>Crown</Filter>
     </ClCompile>
     <ClCompile Include="src\Crown\Log.cpp">

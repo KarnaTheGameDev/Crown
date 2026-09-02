@@ -3,6 +3,8 @@
 //for use by Crown applications
 #include "Crown/Application.h"
 #include "Crown/Log.h"
+#include "Crown/Input.h"
+#include "Crown/Scene/Entity.h"
 #include "Crown/KeyCodes.h"
 #include "Crown/MouseCodes.h"
 

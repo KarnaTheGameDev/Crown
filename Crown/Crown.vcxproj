@@ -169,6 +169,7 @@
     <ClInclude Include="src\Crown\Events\Event.h" />
     <ClInclude Include="src\Crown\Events\KeyEvent.h" />
     <ClInclude Include="src\Crown\Events\MouseEvent.h" />
+    <ClInclude Include="src\Crown\Input.h" />
     <ClInclude Include="src\Crown\KeyCodes.h" />
     <ClInclude Include="src\Crown\Log.h" />
     <ClInclude Include="src\Crown\MouseCodes.h" />
@@ -184,6 +185,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\Crown\Application.cpp" />
+    <ClCompile Include="src\Crown\Input.cpp" />
     <ClCompile Include="src\Crown\Log.cpp" />
     <ClCompile Include="src\Crown\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Crown\Renderer\OrthographicCamera.cpp" />

@@ -260,6 +260,8 @@ namespace Crown {
 			float dt = time - lastTime;
 			lastTime = time;
 
+			OnUpdate(dt);
+
 			// Track the viewport panel. Resize is a no-op when nothing changed.
 			if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
 			{
