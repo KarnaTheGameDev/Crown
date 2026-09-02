@@ -207,6 +207,10 @@ namespace Crown {
 		IMGUI_CHECKVERSION();
 		ImGui::CreateContext();
 		ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_DockingEnable;
+		// ImGui drags a window from anywhere in its body by default. The viewport
+		// image does not consume the drag, so dragging an entity would drag the
+		// panel along with it.
+		ImGui::GetIO().ConfigWindowsMoveFromTitleBarOnly = true;
 		ImGui::StyleColorsDark();
 		ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)m_Window->GetNativeWindow(), true);
 		ImGui_ImplOpenGL3_Init("#version 330");
