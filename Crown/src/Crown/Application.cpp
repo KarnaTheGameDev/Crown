@@ -215,20 +215,6 @@ namespace Crown {
 		ImGui_ImplGlfw_InitForOpenGL((GLFWwindow*)m_Window->GetNativeWindow(), true);
 		ImGui_ImplOpenGL3_Init("#version 330");
 
-		// Seed a scene. Same grid as before, but as data that can be edited.
-		for (int y = 0; y < 12; y++)
-		{
-			for (int x = 0; x < 20; x++)
-			{
-				Entity e;
-				e.Name = "Sprite " + std::to_string(y * 20 + x);
-				e.Position = { x * 0.15f - 1.425f, y * 0.15f - 0.825f, 0.0f };
-				e.Scale = { 0.09f, 0.09f };
-				e.AtlasCell = (x + y * 3) % (s_AtlasCells * s_AtlasCells);
-				m_Entities.push_back(e);
-			}
-		}
-
 		CROWN_CORE_INFO("WASD moves the camera, Q/E rotates it.");
 	}
 
@@ -331,8 +317,8 @@ namespace Crown {
 			{
 				if (ImGui::IsKeyPressed(ImGuiKey_S, false))
 					SaveScene(m_Entities, s_ScenePath);
-				if (ImGui::IsKeyPressed(ImGuiKey_O, false) && LoadScene(m_Entities, s_ScenePath))
-					m_Selected = -1;
+				if (ImGui::IsKeyPressed(ImGuiKey_O, false))
+					LoadSceneFromDisk();
 			}
 			{
 				const glm::vec3& pos = m_Camera->GetPosition();
@@ -344,7 +330,7 @@ namespace Crown {
 				ImGui::ColorEdit3("Clear colour", m_ClearColor);
 				ImGui::SliderFloat("Camera speed", &m_CameraSpeed, 0.1f, 5.0f);
 				ImGui::Text("Camera  x %.2f  y %.2f  rot %.1f", pos.x, pos.y, m_Camera->GetRotation());
-				ImGui::Text("Entities: %zu", m_Entities.size());
+				ImGui::Text("Entities: %zu   next id: %u", m_Entities.size(), m_NextEntityID);
 				ImGui::Text("Viewport %ux%u", m_ViewportWidth, m_ViewportHeight);
 				ImGui::End();
 
@@ -353,10 +339,8 @@ namespace Crown {
 				ImGui::Begin("Hierarchy");
 				if (ImGui::Button("Add"))
 				{
-					Entity e;
-					e.Name = "Entity " + std::to_string(m_Entities.size());
+					Entity& e = CreateEntity("Entity " + std::to_string(m_NextEntityID));
 					e.Scale = { 0.15f, 0.15f };
-					m_Entities.push_back(e);
 					m_Selected = (int)m_Entities.size() - 1;
 				}
 				ImGui::SameLine();
@@ -370,8 +354,8 @@ namespace Crown {
 				if (ImGui::Button("Save"))
 					SaveScene(m_Entities, s_ScenePath);
 				ImGui::SameLine();
-				if (ImGui::Button("Load") && LoadScene(m_Entities, s_ScenePath))
-					m_Selected = -1;          // indices refer to the old scene
+				if (ImGui::Button("Load"))
+					LoadSceneFromDisk();
 				ImGui::Separator();
 
 				for (int i = 0; i < (int)m_Entities.size(); i++)
@@ -481,6 +465,45 @@ namespace Crown {
 
 			m_Window->OnUpdate();
 		}
+	}
+
+	Entity& Application::CreateEntity(const std::string& name)
+	{
+		Entity e;
+		e.ID = m_NextEntityID++;
+		e.Name = name;
+		m_Entities.push_back(e);
+		return m_Entities.back();
+	}
+
+	Entity* Application::FindEntity(uint32_t id)
+	{
+		if (id == 0)
+			return nullptr;
+		for (Entity& e : m_Entities)
+			if (e.ID == id)
+				return &e;
+		return nullptr;
+	}
+
+	void Application::LoadSceneFromDisk()
+	{
+		if (!LoadScene(m_Entities, s_ScenePath))
+			return;
+
+		// Ids come back from the file, so the counter has to clear the highest
+		// one or the next entity created would collide with a loaded one.
+		// A scene written before ids existed has none, so assign those now.
+		uint32_t highest = 0;
+		for (const Entity& e : m_Entities)
+			highest = std::max(highest, e.ID);
+		m_NextEntityID = highest + 1;
+
+		for (Entity& e : m_Entities)
+			if (e.ID == 0)
+				e.ID = m_NextEntityID++;
+
+		m_Selected = -1;                 // indices referred to the old scene
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)

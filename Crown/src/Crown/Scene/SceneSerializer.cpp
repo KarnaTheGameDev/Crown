@@ -32,6 +32,7 @@ namespace Crown {
 			for (const Entity& e : entities)
 			{
 				out << "entity\n";
+				out << "id "    << e.ID << '\n';
 				out << "name "  << e.Name << '\n';                                    // rest of line
 				out << "pos "   << e.Position.x << ' ' << e.Position.y << ' ' << e.Position.z << '\n';
 				out << "rot "   << e.Rotation << '\n';
@@ -101,7 +102,8 @@ namespace Crown {
 
 			Entity& e = parsed.back();
 			bool ok = true;
-			if      (key == "name")  { std::getline(ls >> std::ws, e.Name); }
+			if      (key == "id")    { ok = (bool)(ls >> e.ID); }
+			else if (key == "name")  { std::getline(ls >> std::ws, e.Name); }
 			else if (key == "pos")   { ok = (bool)(ls >> e.Position.x >> e.Position.y >> e.Position.z); }
 			else if (key == "rot")   { ok = (bool)(ls >> e.Rotation); }
 			else if (key == "scale") { ok = (bool)(ls >> e.Scale.x >> e.Scale.y); }

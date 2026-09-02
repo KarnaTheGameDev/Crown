@@ -26,6 +26,14 @@ namespace Crown {
 		// Overridden by the client to run its own code each frame.
 		virtual void OnUpdate(float deltaTime) {}
 
+		// Creates an entity with a fresh id and returns it. Use this rather than
+		// pushing onto GetEntities(), or the entity has no id to refer to later.
+		Entity& CreateEntity(const std::string& name = "Entity");
+
+		// Null once the entity is deleted. Look up every frame rather than
+		// caching the pointer: the vector reallocates as entities are added.
+		Entity* FindEntity(uint32_t id);
+
 		std::vector<Entity>& GetEntities() { return m_Entities; }
 
 		void OnEvent(Event& e);
@@ -35,6 +43,7 @@ namespace Crown {
 		inline static Application& Get() { return *s_Instance; }
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
+		void LoadSceneFromDisk();
 
 		std::unique_ptr<Window> m_Window;
 		bool m_Running = true;
@@ -45,6 +54,7 @@ namespace Crown {
 
 		std::vector<Entity> m_Entities;
 		int m_Selected = -1;               // index into m_Entities, -1 for none
+		uint32_t m_NextEntityID = 1;       // 0 is reserved for 'unassigned'
 		bool m_DraggingEntity = false;     // drag must have started on the viewport
 
 		// Driven by the debug UI. Plain floats so glm stays out of this header.

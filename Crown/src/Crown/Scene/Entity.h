@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <glm/glm.hpp>
 
@@ -10,6 +11,12 @@ namespace Crown {
 	// entt later only touches the code that iterates them.
 	struct Entity
 	{
+		// Stable for the entity's lifetime, including across save and load.
+		// Hold one of these rather than an index: the vector shifts whenever
+		// anything is deleted, so an index silently starts referring to a
+		// different entity. 0 means unassigned.
+		uint32_t ID = 0;
+
 		std::string Name = "Entity";
 
 		glm::vec3 Position{ 0.0f, 0.0f, 0.0f };
