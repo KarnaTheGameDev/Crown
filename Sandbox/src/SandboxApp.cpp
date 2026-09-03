@@ -54,6 +54,8 @@ public:
 			ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), "GAME OVER - press R");
 		else if (m_RespawnIn > 0.0f)
 			ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.4f, 1.0f), "Respawning...");
+		else if (m_Invulnerable > 0.0f)
+			ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), "Shielded %.1fs", m_Invulnerable);
 		else
 			ImGui::TextDisabled("Left/Right turn, Up thrust");
 		ImGui::End();
@@ -127,6 +129,9 @@ private:
 		ship.Tint = { 0.85f, 0.95f, 1.0f, 1.0f };
 		m_ShipID = ship.ID;
 		m_ShipVelocity = { 0.0f, 0.0f };
+		// Without this you can respawn straight into the asteroid that just
+		// killed you, and lose every life in about a second.
+		m_Invulnerable = 2.0f;
 	}
 
 	void SpawnWave(int wave)
@@ -167,6 +172,7 @@ private:
 	void UpdateShip(float dt)
 	{
 		m_FireCooldown -= dt;
+		m_Invulnerable = std::max(0.0f, m_Invulnerable - dt);
 
 		if (m_RespawnIn > 0.0f)
 		{
@@ -189,6 +195,9 @@ private:
 
 		if (Crown::Input::IsKeyPressed(Crown::Key::Up))
 			m_ShipVelocity += forward * 1.8f * dt;
+
+		float blink = (m_Invulnerable > 0.0f && std::fmod(m_Invulnerable, 0.24f) < 0.12f) ? 0.35f : 1.0f;
+		ship->Tint = { 0.85f, 0.95f, 1.0f, blink };
 
 		m_ShipVelocity *= (1.0f - 0.5f * dt);         // drag, so it does not run away
 		ship->Position += glm::vec3(m_ShipVelocity * dt, 0.0f);
@@ -262,7 +271,8 @@ private:
 		std::vector<Hit> hits;
 		bool shipHit = false;
 
-		Crown::Entity* ship = (m_RespawnIn > 0.0f) ? nullptr : FindEntity(m_ShipID);
+		Crown::Entity* ship = (m_RespawnIn > 0.0f || m_Invulnerable > 0.0f)
+			? nullptr : FindEntity(m_ShipID);
 
 		for (uint32_t rockId : m_Asteroids)
 		{
@@ -361,6 +371,7 @@ private:
 	bool  m_GameOver = false;
 	float m_RespawnIn = 0.0f;
 	float m_FireCooldown = 0.0f;
+	float m_Invulnerable = 0.0f;
 
 	std::mt19937 m_Random;
 };
