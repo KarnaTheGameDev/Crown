@@ -39,9 +39,13 @@ namespace Crown {
 		// caching the pointer: the vector reallocates as entities are added.
 		Entity* FindEntity(uint32_t id);
 
-		// First entity whose bounds overlap this one, or null. Bounds are
-		// axis-aligned, so a rotated quad is tested by its bounding box.
-		Entity* FindOverlapping(const Entity& entity);
+		// Every entity whose bounds overlap this one, by id. Ids rather than
+		// pointers, because acting on a hit usually destroys something and that
+		// invalidates every pointer into the scene. `out` is cleared first, so
+		// callers can keep one vector and reuse it each frame.
+		//
+		// Bounds are axis-aligned, so a rotated quad is tested by its box.
+		void FindOverlapping(const Entity& entity, std::vector<uint32_t>& out) const;
 
 		// Invalidates every Entity pointer held across the call, since the
 		// vector shifts. Returns false if the id was already gone.

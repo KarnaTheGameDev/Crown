@@ -5,13 +5,32 @@
 #include <algorithm>
 #include <cmath>
 #include <random>
-#include <unordered_map>
 #include <vector>
 
 // Asteroids, written entirely against Crown's client API. The engine knows
 // nothing about ships, bullets or scores.
 class Sandbox : public Crown::Application
 {
+	// Everything the game needs to know about an entity, stored on the entity
+	// itself through Entity::UserData. This used to be four hash maps keyed by
+	// id, which meant four lookups per entity per frame and a cleanup step that
+	// had to remember all four.
+	enum class Kind { Ship, Bullet, Asteroid };
+
+	struct Mover
+	{
+		Kind      What = Kind::Asteroid;
+		glm::vec2 Velocity{ 0.0f, 0.0f };
+		float     Spin = 0.0f;          // degrees per second
+		float     Life = -1.0f;         // seconds remaining, negative for forever
+		int       Tier = 0;             // asteroid size, 3 down to 1
+	};
+
+	static Mover* MoverOf(Crown::Entity& e)
+	{
+		return std::any_cast<Mover>(&e.UserData);
+	}
+
 public:
 	Sandbox()
 		: m_Random(std::random_device{}())
@@ -35,9 +54,8 @@ public:
 		UpdateShip(dt);
 		Integrate(dt);
 		ResolveCollisions();
-		ExpireBullets(dt);
 
-		if (m_Asteroids.empty())
+		if (CountAsteroids() == 0)
 			SpawnWave(++m_Wave);
 	}
 
@@ -67,13 +85,6 @@ private:
 	static constexpr float s_HalfWidth  = 1.5f;
 	static constexpr float s_HalfHeight = 0.85f;
 
-	// Radius used for gameplay collision. Circles rather than boxes: every
-	// asteroid spins, and a circle is rotation-invariant where a box is not.
-	static float RadiusOf(const Crown::Entity& e)
-	{
-		return 0.75f * std::max(e.Scale.x, e.Scale.y);
-	}
-
 	void Wrap(Crown::Entity& e) const
 	{
 		if (e.Position.x >  s_HalfWidth)  e.Position.x = -s_HalfWidth;
@@ -87,27 +98,25 @@ private:
 		return std::uniform_real_distribution<float>(lo, hi)(m_Random);
 	}
 
-	// --- lifetime ----------------------------------------------------------
-
-	// Destroy an entity and drop every piece of state keyed to it, so the maps
-	// cannot outlive the scene.
-	void Kill(uint32_t id)
+	int CountAsteroids()
 	{
-		DestroyEntity(id);
-		m_Velocity.erase(id);
-		m_Spin.erase(id);
-		m_BulletLife.erase(id);
-		m_Tier.erase(id);
-		m_Asteroids.erase(std::remove(m_Asteroids.begin(), m_Asteroids.end(), id), m_Asteroids.end());
-		m_Bullets.erase(std::remove(m_Bullets.begin(), m_Bullets.end(), id), m_Bullets.end());
+		int count = 0;
+		for (Crown::Entity& e : GetEntities())
+			if (Mover* m = MoverOf(e); m && m->What == Kind::Asteroid)
+				count++;
+		return count;
 	}
+
+	// --- lifetime ----------------------------------------------------------
 
 	void StartGame()
 	{
-		for (uint32_t id : std::vector<uint32_t>(m_Asteroids)) Kill(id);
-		for (uint32_t id : std::vector<uint32_t>(m_Bullets))   Kill(id);
-		if (m_ShipID)
-			Kill(m_ShipID);
+		// Collect first: destroying shifts the vector being iterated.
+		std::vector<uint32_t> everything;
+		for (const Crown::Entity& e : GetEntities())
+			everything.push_back(e.ID);
+		for (uint32_t id : everything)
+			DestroyEntity(id);
 
 		m_Score = 0;
 		m_Lives = 3;
@@ -115,6 +124,7 @@ private:
 		m_GameOver = false;
 		m_RespawnIn = 0.0f;
 		m_FireCooldown = 0.0f;
+		m_Invulnerable = 0.0f;
 
 		SpawnShip();
 		SpawnWave(++m_Wave);
@@ -127,6 +137,8 @@ private:
 		ship.Scale = { 0.11f, 0.11f };
 		ship.AtlasCell = 2;                       // a triangle in the atlas
 		ship.Tint = { 0.85f, 0.95f, 1.0f, 1.0f };
+		ship.UserData = Mover{ Kind::Ship };
+
 		m_ShipID = ship.ID;
 		m_ShipVelocity = { 0.0f, 0.0f };
 		// Without this you can respawn straight into the asteroid that just
@@ -151,20 +163,32 @@ private:
 	{
 		static const float scaleFor[4] = { 0.0f, 0.085f, 0.13f, 0.20f };
 
+		float speed = RandomFloat(0.18f, 0.32f) * (1.0f + 0.35f * tier);
+		float heading = RandomFloat(0.0f, 6.2831853f);
+
 		Crown::Entity& rock = CreateEntity("Asteroid");
 		rock.Position = { at.x, at.y, 0.0f };
 		rock.Scale = { scaleFor[tier], scaleFor[tier] };
 		rock.AtlasCell = (tier == 3) ? 1 : (tier == 2 ? 5 : 9);
 		rock.Tint = { 0.75f, 0.78f, 0.85f, 1.0f };
 		rock.Rotation = RandomFloat(0.0f, 360.0f);
+		rock.UserData = Mover{
+			Kind::Asteroid,
+			{ std::cos(heading) * speed, std::sin(heading) * speed },
+			RandomFloat(-70.0f, 70.0f),
+			-1.0f,
+			tier
+		};
+	}
 
-		uint32_t id = rock.ID;                    // rock dangles after the next create
-		float speed = RandomFloat(0.18f, 0.32f) * (1.0f + 0.35f * tier);
-		float heading = RandomFloat(0.0f, 6.2831853f);
-		m_Velocity[id] = { std::cos(heading) * speed, std::sin(heading) * speed };
-		m_Spin[id] = RandomFloat(-70.0f, 70.0f);
-		m_Tier[id] = tier;
-		m_Asteroids.push_back(id);
+	void FireBullet(glm::vec2 at, glm::vec2 direction)
+	{
+		Crown::Entity& bullet = CreateEntity("Bullet");
+		bullet.Position = { at.x, at.y, 0.0f };
+		bullet.Scale = { 0.035f, 0.035f };
+		bullet.AtlasCell = 0;                     // a circle in the atlas
+		bullet.Tint = { 1.0f, 0.85f, 0.35f, 1.0f };
+		bullet.UserData = Mover{ Kind::Bullet, direction * 2.2f + m_ShipVelocity, 0.0f, 1.1f, 0 };
 	}
 
 	// --- per frame ---------------------------------------------------------
@@ -216,127 +240,103 @@ private:
 		}
 	}
 
-	void FireBullet(glm::vec2 at, glm::vec2 direction)
-	{
-		Crown::Entity& bullet = CreateEntity("Bullet");
-		bullet.Position = { at.x, at.y, 0.0f };
-		bullet.Scale = { 0.035f, 0.035f };
-		bullet.AtlasCell = 0;                     // a circle in the atlas
-		bullet.Tint = { 1.0f, 0.85f, 0.35f, 1.0f };
-
-		uint32_t id = bullet.ID;
-		m_Velocity[id] = direction * 2.2f + m_ShipVelocity;
-		m_BulletLife[id] = 1.1f;
-		m_Bullets.push_back(id);
-	}
-
+	// Moves everything that has a Mover, and retires bullets whose time is up.
 	void Integrate(float dt)
 	{
-		// Iterating ids rather than entities: nothing here creates or destroys,
-		// but keeping the habit means adding a spawn later cannot corrupt this.
-		for (const auto& entry : m_Velocity)
+		m_Expired.clear();
+
+		for (Crown::Entity& e : GetEntities())
 		{
-			Crown::Entity* e = FindEntity(entry.first);
-			if (!e)
+			Mover* m = MoverOf(e);
+			if (!m || m->What == Kind::Ship)      // the ship is driven by input
 				continue;
 
-			e->Position += glm::vec3(entry.second * dt, 0.0f);
+			e.Position += glm::vec3(m->Velocity * dt, 0.0f);
+			e.Rotation += m->Spin * dt;
+			Wrap(e);
 
-			auto spin = m_Spin.find(entry.first);
-			if (spin != m_Spin.end())
-				e->Rotation += spin->second * dt;
-
-			Wrap(*e);
+			if (m->Life > 0.0f)
+			{
+				m->Life -= dt;
+				if (m->Life <= 0.0f)
+					m_Expired.push_back(e.ID);
+			}
 		}
-	}
 
-	void ExpireBullets(float dt)
-	{
-		std::vector<uint32_t> dead;
-		for (auto& entry : m_BulletLife)
-		{
-			entry.second -= dt;
-			if (entry.second <= 0.0f)
-				dead.push_back(entry.first);
-		}
-		for (uint32_t id : dead)
-			Kill(id);
+		for (uint32_t id : m_Expired)
+			DestroyEntity(id);
 	}
 
 	void ResolveCollisions()
 	{
-		// Collect first, act second. Killing or spawning inside the scan would
-		// invalidate the entity pointers the scan is reading.
-		struct Hit { uint32_t Bullet, Asteroid; };
-		std::vector<Hit> hits;
+		// Gather, then act. Destroying or spawning mid-scan would invalidate
+		// the entity references the scan is holding.
+		m_Hits.clear();
 		bool shipHit = false;
 
-		Crown::Entity* ship = (m_RespawnIn > 0.0f || m_Invulnerable > 0.0f)
-			? nullptr : FindEntity(m_ShipID);
-
-		for (uint32_t rockId : m_Asteroids)
+		for (Crown::Entity& e : GetEntities())
 		{
-			Crown::Entity* rock = FindEntity(rockId);
-			if (!rock)
+			Mover* m = MoverOf(e);
+			if (!m)
 				continue;
 
-			for (uint32_t bulletId : m_Bullets)
-			{
-				Crown::Entity* bullet = FindEntity(bulletId);
-				if (bullet && Touching(*rock, *bullet))
-				{
-					hits.push_back({ bulletId, rockId });
-					break;                        // one bullet per rock per frame
-				}
-			}
+			bool isBullet = m->What == Kind::Bullet;
+			bool isShip   = m->What == Kind::Ship && m_Invulnerable <= 0.0f && m_RespawnIn <= 0.0f;
+			if (!isBullet && !isShip)
+				continue;
 
-			if (ship && !shipHit && Touching(*rock, *ship))
-				shipHit = true;
+			FindOverlapping(e, m_Overlaps);
+			for (uint32_t otherId : m_Overlaps)
+			{
+				Crown::Entity* other = FindEntity(otherId);
+				Mover* om = other ? MoverOf(*other) : nullptr;
+				if (!om || om->What != Kind::Asteroid)
+					continue;                     // bullets ignore each other and the ship
+
+				if (isBullet)
+					m_Hits.push_back({ e.ID, otherId });
+				else
+					shipHit = true;
+				break;                            // one asteroid per bullet per frame
+			}
 		}
 
-		for (const Hit& hit : hits)
+		for (const Hit& hit : m_Hits)
 			SplitAsteroid(hit.Asteroid, hit.Bullet);
 
 		if (shipHit)
 			LoseLife();
 	}
 
-	static bool Touching(const Crown::Entity& a, const Crown::Entity& b)
-	{
-		glm::vec2 delta{ a.Position.x - b.Position.x, a.Position.y - b.Position.y };
-		float reach = RadiusOf(a) + RadiusOf(b);
-		return glm::dot(delta, delta) <= reach * reach;
-	}
-
 	void SplitAsteroid(uint32_t rockId, uint32_t bulletId)
 	{
-		auto tier = m_Tier.find(rockId);
-		if (tier == m_Tier.end())
+		Crown::Entity* rock = FindEntity(rockId);
+		Mover* m = rock ? MoverOf(*rock) : nullptr;
+		if (!m)
 			return;                               // already destroyed this frame
 
-		int currentTier = tier->second;
-		Crown::Entity* rock = FindEntity(rockId);
-		glm::vec2 at = rock ? glm::vec2(rock->Position.x, rock->Position.y) : glm::vec2(0.0f);
+		int tier = m->Tier;
+		glm::vec2 at{ rock->Position.x, rock->Position.y };
 
 		static const int scoreFor[4] = { 0, 100, 50, 20 };
-		m_Score += scoreFor[currentTier];
+		m_Score += scoreFor[tier];
 
-		Kill(bulletId);
-		Kill(rockId);
+		DestroyEntity(bulletId);
+		DestroyEntity(rockId);
 
-		if (currentTier > 1)
+		if (tier > 1)
 		{
 			for (int i = 0; i < 2; i++)
 			{
 				glm::vec2 offset{ RandomFloat(-0.04f, 0.04f), RandomFloat(-0.04f, 0.04f) };
-				SpawnAsteroid(at + offset, currentTier - 1);
+				SpawnAsteroid(at + offset, tier - 1);
 			}
 		}
 	}
 
 	void LoseLife()
 	{
-		Kill(m_ShipID);
+		DestroyEntity(m_ShipID);
 		m_ShipID = 0;
 		m_Lives--;
 
@@ -353,14 +353,12 @@ private:
 
 	// --- state -------------------------------------------------------------
 
-	// Entity has no room for gameplay data, so it lives here keyed by id.
-	std::unordered_map<uint32_t, glm::vec2> m_Velocity;
-	std::unordered_map<uint32_t, float>     m_Spin;
-	std::unordered_map<uint32_t, float>     m_BulletLife;
-	std::unordered_map<uint32_t, int>       m_Tier;
+	struct Hit { uint32_t Bullet, Asteroid; };
 
-	std::vector<uint32_t> m_Asteroids;
-	std::vector<uint32_t> m_Bullets;
+	// Kept as members purely so the per-frame scans do not reallocate.
+	std::vector<uint32_t> m_Overlaps;
+	std::vector<uint32_t> m_Expired;
+	std::vector<Hit>      m_Hits;
 
 	uint32_t  m_ShipID = 0;
 	glm::vec2 m_ShipVelocity{ 0.0f, 0.0f };

@@ -507,12 +507,14 @@ namespace Crown {
 		return nullptr;
 	}
 
-	Entity* Application::FindOverlapping(const Entity& entity)
+	void Application::FindOverlapping(const Entity& entity, std::vector<uint32_t>& out) const
 	{
+		out.clear();
+
 		glm::vec2 aMin, aMax;
 		EntityBounds(entity, aMin, aMax);
 
-		for (Entity& other : m_Entities)
+		for (const Entity& other : m_Entities)
 		{
 			// Compare by id, not by address: the caller's reference may have
 			// come from a different lookup than this one.
@@ -524,9 +526,8 @@ namespace Crown {
 
 			if (aMin.x <= bMax.x && aMax.x >= bMin.x &&
 			    aMin.y <= bMax.y && aMax.y >= bMin.y)
-				return &other;
+				out.push_back(other.ID);
 		}
-		return nullptr;
 	}
 
 	bool Application::DestroyEntity(uint32_t id)

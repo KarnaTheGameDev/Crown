@@ -1,5 +1,6 @@
 #pragma once
 
+#include <any>
 #include <cstdint>
 #include <string>
 #include <glm/glm.hpp>
@@ -25,6 +26,18 @@ namespace Crown {
 
 		int AtlasCell = 0;                        // index into the sprite atlas
 		glm::vec4 Tint{ 1.0f, 1.0f, 1.0f, 1.0f };
+
+		// Whatever the game needs to hang off this entity: velocity, health, a
+		// state machine. The engine never reads it, so it stays out of the
+		// engine's vocabulary, and it dies with the entity rather than leaving
+		// the client to clean up a parallel container.
+		//
+		// Deliberately not serialised. Gameplay state is transient; a saved
+		// scene is the arrangement of things, not the middle of a game.
+		//
+		//   e.UserData = Mover{ velocity, spin };
+		//   if (Mover* m = std::any_cast<Mover>(&e.UserData)) ...
+		std::any UserData;
 	};
 
 }
