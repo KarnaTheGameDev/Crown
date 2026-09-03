@@ -26,6 +26,11 @@ namespace Crown {
 		// Overridden by the client to run its own code each frame.
 		virtual void OnUpdate(float deltaTime) {}
 
+		// Called inside the editor's ImGui frame so the client can draw its own
+		// panels. Same shape as OnUpdate: the client needed somewhere to put a
+		// score, and it had none.
+		virtual void OnImGuiRender() {}
+
 		// Creates an entity with a fresh id and returns it. Use this rather than
 		// pushing onto GetEntities(), or the entity has no id to refer to later.
 		Entity& CreateEntity(const std::string& name = "Entity");

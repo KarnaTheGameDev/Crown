@@ -332,6 +332,7 @@ namespace Crown {
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
 			ImGui::DockSpaceOverViewport();
+			OnImGuiRender();
 
 			if (ImGui::GetIO().KeyCtrl)
 			{

@@ -1,14 +1,14 @@
 #pragma once
 
-#ifdef CROWN_PLATFORM_WINDOWS
-	#ifdef CROWN_BUILD_DLL
-		#define CROWN_API __declspec(dllexport)
-	#else
-		#define CROWN_API __declspec(dllimport)
-	#endif
-#else
+#ifndef CROWN_PLATFORM_WINDOWS
 	#error Crown only supports Windows!
 #endif
+
+// Crown is a static library, so nothing needs exporting. Keeping the macro
+// means the class declarations do not have to change if it ever becomes a DLL
+// again - though that would bring back the problem this solved: ImGui keeps
+// its context in a global, and a DLL boundary gives each module its own.
+#define CROWN_API
 
 #define BIT(x) (1 << x)
 

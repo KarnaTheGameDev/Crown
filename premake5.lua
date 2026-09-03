@@ -93,7 +93,7 @@ project "ImGui"
 
 project "Crown"
 	location "Crown"
-	kind "SharedLib"
+	kind "StaticLib"
 	language "C++"
 	cppdialect "C++17"
 	staticruntime "off"
@@ -136,12 +136,7 @@ project "Crown"
 		defines
 		{
 			"CROWN_PLATFORM_WINDOWS",
-			"CROWN_BUILD_DLL",
 			"GLFW_INCLUDE_NONE"
-		}
-		postbuildcommands
-		{
-			("{COPY} %{cfg.buildtarget.relpath} \"../bin/" .. outputdir .. "/Sandbox/\"")
 		}
 
 	filter "configurations:Debug"
@@ -179,12 +174,14 @@ project "Sandbox"
 	{
 		"Crown/vendor/spdlog/include",
 		"Crown/src",
-		"%{IncludeDir.glm}"
+		"%{IncludeDir.glm}",
+		"%{IncludeDir.ImGui}"
 	}
 
 	links
 	{
-		"Crown"
+		"Crown",
+		"ImGui"
 	}
 
 	filter "system:windows"
