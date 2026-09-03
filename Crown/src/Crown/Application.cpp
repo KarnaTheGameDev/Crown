@@ -80,6 +80,26 @@ namespace Crown {
 				* glm::scale(glm::mat4(1.0f), glm::vec3(e.Scale, 1.0f));
 		}
 
+		// World-space bounds of an entity's quad, as the box around its four
+		// transformed corners.
+		// ponytail: a rotated quad over-reports at the corners, so contact can
+		// register slightly early. Swap in SAT if rotation needs to be exact.
+		void EntityBounds(const Entity& e, glm::vec2& outMin, glm::vec2& outMax)
+		{
+			const glm::mat4 transform = EntityTransform(e);
+			const float h = s_QuadHalfExtent;
+			const glm::vec2 local[4] = { { -h, -h }, { h, -h }, { h, h }, { -h, h } };
+
+			outMin = glm::vec2(std::numeric_limits<float>::max());
+			outMax = glm::vec2(std::numeric_limits<float>::lowest());
+			for (const glm::vec2& corner : local)
+			{
+				glm::vec2 world = glm::vec2(transform * glm::vec4(corner, 0.0f, 1.0f));
+				outMin = glm::min(outMin, world);
+				outMax = glm::max(outMax, world);
+			}
+		}
+
 		// Screen pixel inside the viewport image -> world position on z = 0.
 		glm::vec2 ViewportToWorld(ImVec2 pixel, ImVec2 origin, ImVec2 size, const glm::mat4& invViewProj)
 		{
@@ -484,6 +504,49 @@ namespace Crown {
 			if (e.ID == id)
 				return &e;
 		return nullptr;
+	}
+
+	Entity* Application::FindOverlapping(const Entity& entity)
+	{
+		glm::vec2 aMin, aMax;
+		EntityBounds(entity, aMin, aMax);
+
+		for (Entity& other : m_Entities)
+		{
+			// Compare by id, not by address: the caller's reference may have
+			// come from a different lookup than this one.
+			if (other.ID == entity.ID)
+				continue;
+
+			glm::vec2 bMin, bMax;
+			EntityBounds(other, bMin, bMax);
+
+			if (aMin.x <= bMax.x && aMax.x >= bMin.x &&
+			    aMin.y <= bMax.y && aMax.y >= bMin.y)
+				return &other;
+		}
+		return nullptr;
+	}
+
+	bool Application::DestroyEntity(uint32_t id)
+	{
+		for (size_t i = 0; i < m_Entities.size(); i++)
+		{
+			if (m_Entities[i].ID != id)
+				continue;
+
+			m_Entities.erase(m_Entities.begin() + i);
+
+			// The editor's selection is an index, so it has to move with the
+			// erase or it starts pointing at the wrong entity.
+			if (m_Selected == (int)i)
+				m_Selected = -1;
+			else if (m_Selected > (int)i)
+				m_Selected--;
+
+			return true;
+		}
+		return false;
 	}
 
 	void Application::LoadSceneFromDisk()

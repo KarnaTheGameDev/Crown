@@ -14,6 +14,7 @@ public:
 			block.Position = { std::cos(angle) * 0.9f, std::sin(angle) * 0.55f, 0.0f };
 			block.Scale = { 0.16f, 0.16f };
 			block.AtlasCell = i;
+			m_Remaining++;
 		}
 
 		Crown::Entity& player = CreateEntity("Player");
@@ -26,7 +27,7 @@ public:
 		// shift every index below it.
 		m_PlayerID = player.ID;
 
-		CROWN_INFO("Arrow keys move the player.");
+		CROWN_INFO("Arrow keys move the player. Touch the {0} blocks to collect them.", m_Remaining);
 	}
 
 	void OnUpdate(float deltaTime) override
@@ -49,10 +50,20 @@ public:
 			player->Position += glm::vec3(glm::normalize(direction) * m_Speed * deltaTime, 0.0f);
 			player->Rotation += 90.0f * deltaTime;
 		}
+
+		if (Crown::Entity* touched = FindOverlapping(*player))
+		{
+			CROWN_INFO("Collected {0} ({1} left)", touched->Name, m_Remaining - 1);
+			DestroyEntity(touched->ID);
+			m_Remaining--;
+			// player and touched both dangle now: erasing shifts the vector.
+			// Nothing below may use them, which is why this is last.
+		}
 	}
 
 private:
 	uint32_t m_PlayerID = 0;
+	int m_Remaining = 0;
 	float m_Speed = 1.2f;      // world units per second
 };
 

@@ -34,6 +34,14 @@ namespace Crown {
 		// caching the pointer: the vector reallocates as entities are added.
 		Entity* FindEntity(uint32_t id);
 
+		// First entity whose bounds overlap this one, or null. Bounds are
+		// axis-aligned, so a rotated quad is tested by its bounding box.
+		Entity* FindOverlapping(const Entity& entity);
+
+		// Invalidates every Entity pointer held across the call, since the
+		// vector shifts. Returns false if the id was already gone.
+		bool DestroyEntity(uint32_t id);
+
 		std::vector<Entity>& GetEntities() { return m_Entities; }
 
 		void OnEvent(Event& e);
