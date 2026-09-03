@@ -24,7 +24,14 @@ namespace Crown {
 		float Rotation = 0.0f;                    // degrees, about Z
 		glm::vec2 Scale{ 1.0f, 1.0f };
 
-		int AtlasCell = 0;                        // index into the sprite atlas
+		// Path to a texture, relative to the asset root. Empty draws plain
+		// colour, so an entity is visible before any art is chosen.
+		std::string Texture;
+
+		// Which part of that texture to draw: xy is the origin, zw the size,
+		// both in UV space. The whole image by default; a sub-rectangle picks
+		// one cell out of a sprite sheet.
+		glm::vec4 SpriteRect{ 0.0f, 0.0f, 1.0f, 1.0f };
 		glm::vec4 Tint{ 1.0f, 1.0f, 1.0f, 1.0f };
 
 		// Whatever the game needs to hang off this entity: velocity, health, a

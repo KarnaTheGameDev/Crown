@@ -67,6 +67,9 @@
     <ClInclude Include="src\Crown\Renderer\Texture2D.h">
       <Filter>Crown\Renderer</Filter>
     </ClInclude>
+    <ClInclude Include="src\Crown\Renderer\TextureLibrary.h">
+      <Filter>Crown\Renderer</Filter>
+    </ClInclude>
     <ClInclude Include="src\Crown\Scene\Entity.h">
       <Filter>Crown\Scene</Filter>
     </ClInclude>
@@ -101,6 +104,9 @@
       <Filter>Crown\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Crown\Renderer\Texture2D.cpp">
+      <Filter>Crown\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Crown\Renderer\TextureLibrary.cpp">
       <Filter>Crown\Renderer</Filter>
     </ClCompile>
     <ClCompile Include="src\Crown\Scene\SceneSerializer.cpp">

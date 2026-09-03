@@ -37,8 +37,14 @@ namespace Crown {
 				out << "pos "   << e.Position.x << ' ' << e.Position.y << ' ' << e.Position.z << '\n';
 				out << "rot "   << e.Rotation << '\n';
 				out << "scale " << e.Scale.x << ' ' << e.Scale.y << '\n';
-				out << "cell "  << e.AtlasCell << '\n';
+				out << "sprite " << e.SpriteRect.x << ' ' << e.SpriteRect.y << ' '
+				                 << e.SpriteRect.z << ' ' << e.SpriteRect.w << '\n';
 				out << "tint "  << e.Tint.r << ' ' << e.Tint.g << ' ' << e.Tint.b << ' ' << e.Tint.a << '\n';
+
+				// Only when set, and read back as the rest of the line: a path is
+				// the one field here that can legitimately contain spaces.
+				if (!e.Texture.empty())
+					out << "texture " << e.Texture << '\n';
 			}
 			if (!out)
 			{
@@ -107,7 +113,9 @@ namespace Crown {
 			else if (key == "pos")   { ok = (bool)(ls >> e.Position.x >> e.Position.y >> e.Position.z); }
 			else if (key == "rot")   { ok = (bool)(ls >> e.Rotation); }
 			else if (key == "scale") { ok = (bool)(ls >> e.Scale.x >> e.Scale.y); }
-			else if (key == "cell")  { ok = (bool)(ls >> e.AtlasCell); }
+			else if (key == "sprite"){ ok = (bool)(ls >> e.SpriteRect.x >> e.SpriteRect.y
+			                                          >> e.SpriteRect.z >> e.SpriteRect.w); }
+			else if (key == "texture") { std::getline(ls >> std::ws, e.Texture); }
 			else if (key == "tint")  { ok = (bool)(ls >> e.Tint.r >> e.Tint.g >> e.Tint.b >> e.Tint.a); }
 			else continue;                                 // unknown key: ignore, so older builds tolerate newer files
 

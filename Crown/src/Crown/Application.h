@@ -5,6 +5,9 @@
 #include "Events/Event.h"
 #include "Events/ApplicationEvent.h"
 #include "Scene/Entity.h"
+#include "Renderer/TextureLibrary.h"
+
+#include <glm/glm.hpp>
 
 #include <vector>
 
@@ -71,6 +74,8 @@ namespace Crown {
 
 		std::vector<Entity> m_Entities;
 		int m_Selected = -1;               // index into m_Entities, -1 for none
+		glm::ivec2 m_SheetGrid{ 4, 4 };    // editor-only sprite sheet helper
+		int m_SheetCell = 0;
 		uint32_t m_NextEntityID = 1;       // 0 is reserved for 'unassigned'
 		bool m_DraggingEntity = false;     // drag must have started on the viewport
 
@@ -80,7 +85,7 @@ namespace Crown {
 
 		std::unique_ptr<Shader> m_Shader;
 		std::unique_ptr<OrthographicCamera> m_Camera;
-		std::unique_ptr<Texture2D> m_Texture;
+		TextureLibrary m_Textures;
 		std::unique_ptr<Framebuffer> m_Framebuffer;
 
 		// Size of the viewport panel, which now drives the render target

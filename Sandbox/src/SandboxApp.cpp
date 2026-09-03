@@ -26,6 +26,19 @@ class Sandbox : public Crown::Application
 		int       Tier = 0;             // asteroid size, 3 down to 1
 	};
 
+	// The art all comes from one 4x4 sheet, so the game names the file once and
+	// picks cells out of it. Nothing about this is engine knowledge any more.
+	static constexpr const char* s_Sheet = "assets/textures/atlas.png";
+	static constexpr int s_SheetSize = 4;
+
+	static glm::vec4 Cell(int index)
+	{
+		const float s = 1.0f / s_SheetSize;
+		index %= s_SheetSize * s_SheetSize;
+		// Row 0 is the sheet's top row, but v = 0 is its bottom.
+		return { (index % s_SheetSize) * s, 1.0f - s - (index / s_SheetSize) * s, s, s };
+	}
+
 	static Mover* MoverOf(Crown::Entity& e)
 	{
 		return std::any_cast<Mover>(&e.UserData);
@@ -135,7 +148,8 @@ private:
 		Crown::Entity& ship = CreateEntity("Ship");
 		ship.Position = { 0.0f, 0.0f, 0.0f };
 		ship.Scale = { 0.11f, 0.11f };
-		ship.AtlasCell = 2;                       // a triangle in the atlas
+		ship.Texture = s_Sheet;
+		ship.SpriteRect = Cell(2);                // a triangle in the sheet
 		ship.Tint = { 0.85f, 0.95f, 1.0f, 1.0f };
 		ship.UserData = Mover{ Kind::Ship };
 
@@ -169,7 +183,8 @@ private:
 		Crown::Entity& rock = CreateEntity("Asteroid");
 		rock.Position = { at.x, at.y, 0.0f };
 		rock.Scale = { scaleFor[tier], scaleFor[tier] };
-		rock.AtlasCell = (tier == 3) ? 1 : (tier == 2 ? 5 : 9);
+		rock.Texture = s_Sheet;
+		rock.SpriteRect = Cell((tier == 3) ? 1 : (tier == 2 ? 5 : 9));
 		rock.Tint = { 0.75f, 0.78f, 0.85f, 1.0f };
 		rock.Rotation = RandomFloat(0.0f, 360.0f);
 		rock.UserData = Mover{
@@ -186,7 +201,9 @@ private:
 		Crown::Entity& bullet = CreateEntity("Bullet");
 		bullet.Position = { at.x, at.y, 0.0f };
 		bullet.Scale = { 0.035f, 0.035f };
-		bullet.AtlasCell = 0;                     // a circle in the atlas
+		// A different file from the sheet, and the whole image rather than a
+		// cell: two textures in one scene, which is the point of the library.
+		bullet.Texture = "assets/textures/bolt.png";
 		bullet.Tint = { 1.0f, 0.85f, 0.35f, 1.0f };
 		bullet.UserData = Mover{ Kind::Bullet, direction * 2.2f + m_ShipVelocity, 0.0f, 1.1f, 0 };
 	}

@@ -23,9 +23,6 @@ namespace Crown {
 	// Half-height of the visible world, in world units.
 	static constexpr float s_CameraZoom = 0.9f;
 
-	// The sprite atlas is a square grid of this many cells per side.
-	static constexpr int s_AtlasCells = 4;
-
 	static constexpr const char* s_ScenePath = "assets/scenes/scene.crown";
 
 	namespace {
@@ -209,8 +206,6 @@ namespace Crown {
 		m_Shader->Bind();
 		m_Shader->SetInt("u_Texture", 0);
 
-		m_Texture = std::make_unique<Texture2D>("assets/textures/atlas.png");
-		
 		// The checkerboard has alpha, so blending has to be on for it to read
 		// as a texture rather than a black-fringed block.
 		glEnable(GL_BLEND);
@@ -307,18 +302,15 @@ namespace Crown {
 			m_Shader->SetMat4("u_ViewProjection", m_Camera->GetViewProjection());
 
 			glBindVertexArray(m_QuadVA);
-			m_Texture->Bind(0);
 
-			const float cw = 1.0f / s_AtlasCells;
 			for (const Entity& e : m_Entities)
 			{
 				m_Shader->SetMat4("u_Transform", EntityTransform(e));
 
-				// Atlas row 0 is the texture's top row, but v = 0 is its bottom.
-				int cell = e.AtlasCell % (s_AtlasCells * s_AtlasCells);
-				float u = (cell % s_AtlasCells) * cw;
-				float v = 1.0f - cw - (cell / s_AtlasCells) * cw;
-				m_Shader->SetFloat4("u_TexRect", { u, v, cw, cw });
+				// ponytail: one bind and one draw per entity. Sorting by texture,
+				// or batching, waits until a profiler says the draw calls matter.
+				m_Textures.Get(e.Texture).Bind(0);
+				m_Shader->SetFloat4("u_TexRect", e.SpriteRect);
 				m_Shader->SetFloat4("u_Tint", e.Tint);
 
 				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr);
@@ -404,8 +396,48 @@ namespace Crown {
 					ImGui::DragFloat3("Position", &e.Position.x, 0.01f);
 					ImGui::DragFloat("Rotation", &e.Rotation, 1.0f);
 					ImGui::DragFloat2("Scale", &e.Scale.x, 0.005f, 0.001f, 10.0f);
-					ImGui::SliderInt("Atlas cell", &e.AtlasCell, 0, s_AtlasCells * s_AtlasCells - 1);
 					ImGui::ColorEdit4("Tint", &e.Tint.x);
+
+					ImGui::SeparatorText("Sprite");
+
+					char texture[260];
+					std::snprintf(texture, sizeof(texture), "%s", e.Texture.c_str());
+					if (ImGui::InputText("Texture", texture, sizeof(texture)))
+						e.Texture = texture;
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Path under the asset root, e.g. assets/textures/atlas.png.\nLeave empty for plain colour.");
+
+					// A sheet is described by how it is cut up, not by UVs. Those are
+					// kept per entity so different entities can share one texture with
+					// different grids, and are only applied on an edit so hand-typed
+					// SpriteRect values are not overwritten every frame.
+					ImGui::DragInt2("Sheet columns/rows", &m_SheetGrid.x, 0.1f, 1, 64);
+					if (ImGui::DragInt("Cell", &m_SheetCell, 0.1f, 0, m_SheetGrid.x * m_SheetGrid.y - 1))
+					{
+						int columns = std::max(1, m_SheetGrid.x);
+						int rows = std::max(1, m_SheetGrid.y);
+						int cell = std::clamp(m_SheetCell, 0, columns * rows - 1);
+
+						// Sheet row 0 is the image's top row, but v = 0 is its bottom.
+						float w = 1.0f / columns, h = 1.0f / rows;
+						e.SpriteRect = { (cell % columns) * w, 1.0f - h - (cell / columns) * h, w, h };
+					}
+
+					ImGui::DragFloat4("Sprite rect", &e.SpriteRect.x, 0.005f, 0.0f, 1.0f);
+					if (ImGui::Button("Whole image"))
+						e.SpriteRect = { 0.0f, 0.0f, 1.0f, 1.0f };
+					ImGui::SameLine();
+					if (ImGui::Button("Reload textures"))
+						m_Textures.Reload();
+
+					// Preview with the entity's own UVs, v flipped to match how the
+					// viewport draws it, so what you see here is what renders.
+					const Texture2D& preview = m_Textures.Get(e.Texture);
+					const glm::vec4& r = e.SpriteRect;
+					ImGui::Image((ImTextureID)preview.GetRendererID(), ImVec2(96.0f, 96.0f),
+					             ImVec2(r.x, r.y + r.w), ImVec2(r.x + r.z, r.y));
+					ImGui::SameLine();
+					ImGui::TextDisabled("%ux%u", preview.GetWidth(), preview.GetHeight());
 				}
 				else
 				{

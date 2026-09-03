@@ -22,6 +22,9 @@ namespace Crown {
 
 		void Bind(unsigned int slot = 0) const;
 
+		// Exposed so the editor can preview a texture through ImGui::Image.
+		unsigned int GetRendererID() const { return m_RendererID; }
+
 		unsigned int GetWidth() const { return m_Width; }
 		unsigned int GetHeight() const { return m_Height; }
 		bool IsLoaded() const { return m_Loaded; }
