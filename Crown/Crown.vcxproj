@@ -90,7 +90,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
     </Link>
     <Lib>
-      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;comdlg32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
     <ProjectReference>
     </ProjectReference>
@@ -118,7 +118,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;comdlg32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
     <ProjectReference>
     </ProjectReference>
@@ -146,7 +146,7 @@
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
     <Lib>
-      <AdditionalDependencies>opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>opengl32.lib;comdlg32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Lib>
     <ProjectReference>
     </ProjectReference>
@@ -172,6 +172,7 @@
     <ClInclude Include="src\Crown\Scene\Entity.h" />
     <ClInclude Include="src\Crown\Scene\SceneSerializer.h" />
     <ClInclude Include="src\Crown\Window.h" />
+    <ClInclude Include="src\Platform\Windows\FileDialog.h" />
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h" />
     <ClInclude Include="src\crpch.h" />
   </ItemGroup>
@@ -185,6 +186,7 @@
     <ClCompile Include="src\Crown\Renderer\Texture2D.cpp" />
     <ClCompile Include="src\Crown\Renderer\TextureLibrary.cpp" />
     <ClCompile Include="src\Crown\Scene\SceneSerializer.cpp" />
+    <ClCompile Include="src\Platform\Windows\FileDialog.cpp" />
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp" />
     <ClCompile Include="src\crpch.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>

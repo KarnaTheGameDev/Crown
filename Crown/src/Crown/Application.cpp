@@ -7,6 +7,7 @@
 #include "Crown/Renderer/Texture2D.h"
 #include "Crown/Renderer/Framebuffer.h"
 #include "Crown/Scene/SceneSerializer.h"
+#include "Platform/Windows/FileDialog.h"
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
@@ -267,6 +268,9 @@ namespace Crown {
 
 			OnUpdate(dt);
 
+			if (m_StatusTime > 0.0f)
+				m_StatusTime -= dt;
+
 			// Track the viewport panel. Resize is a no-op when nothing changed.
 			if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
 			{
@@ -381,12 +385,20 @@ namespace Crown {
 				}
 				ImGui::End();
 
+				// Sized for its contents. The sprite section pushed the buttons and
+				// the preview off the bottom of the old 220x250 panel, where they
+				// could not be clicked at all.
 				ImGui::SetNextWindowPos(ImVec2(10.0f, 440.0f), ImGuiCond_FirstUseEver);
-				ImGui::SetNextWindowSize(ImVec2(220.0f, 250.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(330.0f, 430.0f), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Properties");
 				if (m_Selected >= 0 && m_Selected < (int)m_Entities.size())
 				{
 					Entity& e = m_Entities[m_Selected];
+
+					// ImGui puts labels to the right of the widget, so without a
+					// cap the widgets take the whole width and every label is cut
+					// off. Leave room for the longest one.
+					ImGui::PushItemWidth(-140.0f);
 
 					char name[128];
 					std::snprintf(name, sizeof(name), "%s", e.Name.c_str());
@@ -406,6 +418,24 @@ namespace Crown {
 						e.Texture = texture;
 					if (ImGui::IsItemHovered())
 						ImGui::SetTooltip("Path under the asset root, e.g. assets/textures/atlas.png.\nLeave empty for plain colour.");
+
+					if (ImGui::Button("Browse..."))
+					{
+						// Empty means cancelled, and cancelling must not wipe the
+						// texture the entity already had.
+						std::string chosen = FileDialog::Open("Images\0*.png;*.jpg;*.jpeg;*.bmp\0All files\0*.*\0");
+						if (!chosen.empty())
+						{
+							e.Texture = chosen;
+							e.SpriteRect = { 0.0f, 0.0f, 1.0f, 1.0f };   // a new image, so show all of it
+						}
+					}
+					ImGui::SameLine();
+					if (ImGui::Button("Clear"))
+					{
+						e.Texture.clear();
+						e.SpriteRect = { 0.0f, 0.0f, 1.0f, 1.0f };
+					}
 
 					// A sheet is described by how it is cut up, not by UVs. Those are
 					// kept per entity so different entities can share one texture with
@@ -427,8 +457,16 @@ namespace Crown {
 					if (ImGui::Button("Whole image"))
 						e.SpriteRect = { 0.0f, 0.0f, 1.0f, 1.0f };
 					ImGui::SameLine();
-					if (ImGui::Button("Reload textures"))
+					if (ImGui::Button("Reload from disk"))
+					{
 						m_Textures.Reload();
+						// Reloading looks like nothing happening when the files have
+						// not changed, so say it happened.
+						m_Status = "Textures reloaded";
+						m_StatusTime = 2.0f;
+					}
+
+					ImGui::PopItemWidth();
 
 					// Preview with the entity's own UVs, v flipped to match how the
 					// viewport draws it, so what you see here is what renders.
@@ -437,7 +475,14 @@ namespace Crown {
 					ImGui::Image((ImTextureID)preview.GetRendererID(), ImVec2(96.0f, 96.0f),
 					             ImVec2(r.x, r.y + r.w), ImVec2(r.x + r.z, r.y));
 					ImGui::SameLine();
+					ImGui::BeginGroup();
 					ImGui::TextDisabled("%ux%u", preview.GetWidth(), preview.GetHeight());
+					if (!e.Texture.empty() && preview.GetWidth() <= 1)
+						ImGui::TextColored(ImVec4(1.0f, 0.5f, 0.4f, 1.0f), "not loaded");
+					ImGui::EndGroup();
+
+					if (m_StatusTime > 0.0f)
+						ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), "%s", m_Status.c_str());
 				}
 				else
 				{

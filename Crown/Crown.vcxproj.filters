@@ -79,6 +79,9 @@
     <ClInclude Include="src\Crown\Window.h">
       <Filter>Crown</Filter>
     </ClInclude>
+    <ClInclude Include="src\Platform\Windows\FileDialog.h">
+      <Filter>Platform\Windows</Filter>
+    </ClInclude>
     <ClInclude Include="src\Platform\Windows\WindowsWindow.h">
       <Filter>Platform\Windows</Filter>
     </ClInclude>
@@ -111,6 +114,9 @@
     </ClCompile>
     <ClCompile Include="src\Crown\Scene\SceneSerializer.cpp">
       <Filter>Crown\Scene</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Platform\Windows\FileDialog.cpp">
+      <Filter>Platform\Windows</Filter>
     </ClCompile>
     <ClCompile Include="src\Platform\Windows\WindowsWindow.cpp">
       <Filter>Platform\Windows</Filter>

@@ -76,6 +76,8 @@ namespace Crown {
 		int m_Selected = -1;               // index into m_Entities, -1 for none
 		glm::ivec2 m_SheetGrid{ 4, 4 };    // editor-only sprite sheet helper
 		int m_SheetCell = 0;
+		std::string m_Status;              // transient editor feedback
+		float m_StatusTime = 0.0f;
 		uint32_t m_NextEntityID = 1;       // 0 is reserved for 'unassigned'
 		bool m_DraggingEntity = false;     // drag must have started on the viewport
 

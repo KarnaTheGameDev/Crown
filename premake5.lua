@@ -127,7 +127,8 @@ project "Crown"
 		"GLFW",
 		"Glad",
 		"ImGui",
-		"opengl32.lib"
+		"opengl32.lib",
+		"comdlg32.lib"
 	}
 
 	filter "system:windows"
