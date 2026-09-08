@@ -18,6 +18,10 @@ namespace Crown {
 	class Texture2D;
 	class Framebuffer;
 
+	// Edit is the scene as authored. Play runs the game on a copy of it, and
+	// Stop throws that copy away, so playing can never damage what you built.
+	enum class SceneState { Edit, Play, Paused };
+
 	class CROWN_API Application
 	{
 	public:
@@ -27,7 +31,16 @@ namespace Crown {
 		void Run();
 
 		// Overridden by the client to run its own code each frame.
+		// Only called while playing, so a game cannot move things around while
+		// they are being arranged.
 		virtual void OnUpdate(float deltaTime) {}
+
+		// Set up and tear down whatever the game needs. Entities created in
+		// OnPlay are discarded on Stop along with everything else the game did,
+		// so this is where a game builds its level rather than in its
+		// constructor.
+		virtual void OnPlay() {}
+		virtual void OnStop() {}
 
 		// Called inside the editor's ImGui frame so the client can draw its own
 		// panels. Same shape as OnUpdate: the client needed somewhere to put a
@@ -56,6 +69,8 @@ namespace Crown {
 
 		std::vector<Entity>& GetEntities() { return m_Entities; }
 
+		SceneState GetSceneState() const { return m_SceneState; }
+
 		void OnEvent(Event& e);
 
 		inline Window& GetWindow() { return *m_Window; }
@@ -64,6 +79,8 @@ namespace Crown {
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
 		void LoadSceneFromDisk();
+		void StartPlaying();
+		void StopPlaying();
 
 		std::unique_ptr<Window> m_Window;
 		bool m_Running = true;
@@ -73,6 +90,11 @@ namespace Crown {
 		unsigned int m_QuadVA = 0, m_QuadVB = 0, m_QuadIB = 0;
 
 		std::vector<Entity> m_Entities;
+
+		SceneState m_SceneState = SceneState::Edit;
+		// The scene as it was when Play was pressed. Restored on Stop.
+		std::vector<Entity> m_EditSnapshot;
+		uint32_t m_EditNextEntityID = 1;
 		int m_Selected = -1;               // index into m_Entities, -1 for none
 		glm::ivec2 m_SheetGrid{ 4, 4 };    // editor-only sprite sheet helper
 		int m_SheetCell = 0;

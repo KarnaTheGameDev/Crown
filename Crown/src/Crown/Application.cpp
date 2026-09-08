@@ -266,7 +266,8 @@ namespace Crown {
 			float dt = time - lastTime;
 			lastTime = time;
 
-			OnUpdate(dt);
+			if (m_SceneState == SceneState::Play)
+				OnUpdate(dt);
 
 			if (m_StatusTime > 0.0f)
 				m_StatusTime -= dt;
@@ -339,8 +340,42 @@ namespace Crown {
 			}
 			{
 				const glm::vec3& pos = m_Camera->GetPosition();
-				ImGui::SetNextWindowPos(ImVec2(1012.0f, 30.0f), ImGuiCond_FirstUseEver);
-				ImGui::SetNextWindowSize(ImVec2(250.0f, 200.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowPos(ImVec2(350.0f, 30.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(660.0f, 62.0f), ImGuiCond_FirstUseEver);
+				ImGui::Begin("Toolbar");
+				{
+					const bool editing = m_SceneState == SceneState::Edit;
+					const bool paused  = m_SceneState == SceneState::Paused;
+
+					// Play doubles as resume, so a paused game continues rather than
+					// restarting from the snapshot.
+					if (ImGui::Button(paused ? "Resume" : "Play", ImVec2(70.0f, 0.0f)))
+						StartPlaying();
+
+					ImGui::SameLine();
+					ImGui::BeginDisabled(m_SceneState != SceneState::Play);
+					if (ImGui::Button("Pause", ImVec2(70.0f, 0.0f)))
+						m_SceneState = SceneState::Paused;
+					ImGui::EndDisabled();
+
+					ImGui::SameLine();
+					ImGui::BeginDisabled(editing);
+					if (ImGui::Button("Stop", ImVec2(70.0f, 0.0f)))
+						StopPlaying();
+					ImGui::EndDisabled();
+
+					ImGui::SameLine();
+					if (editing)
+						ImGui::TextDisabled("editing");
+					else if (paused)
+						ImGui::TextColored(ImVec4(1.0f, 0.85f, 0.35f, 1.0f), "paused");
+					else
+						ImGui::TextColored(ImVec4(0.45f, 0.9f, 0.5f, 1.0f), "playing");
+				}
+				ImGui::End();
+
+				ImGui::SetNextWindowPos(ImVec2(1020.0f, 30.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(260.0f, 240.0f), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Crown");
 				ImGui::Text("%.1f FPS (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 				ImGui::Separator();
@@ -352,7 +387,7 @@ namespace Crown {
 				ImGui::End();
 
 				ImGui::SetNextWindowPos(ImVec2(10.0f, 30.0f), ImGuiCond_FirstUseEver);
-				ImGui::SetNextWindowSize(ImVec2(220.0f, 400.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(330.0f, 300.0f), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Hierarchy");
 				if (ImGui::Button("Add"))
 				{
@@ -388,8 +423,8 @@ namespace Crown {
 				// Sized for its contents. The sprite section pushed the buttons and
 				// the preview off the bottom of the old 220x250 panel, where they
 				// could not be clicked at all.
-				ImGui::SetNextWindowPos(ImVec2(10.0f, 440.0f), ImGuiCond_FirstUseEver);
-				ImGui::SetNextWindowSize(ImVec2(330.0f, 430.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowPos(ImVec2(10.0f, 340.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(330.0f, 520.0f), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Properties");
 				if (m_Selected >= 0 && m_Selected < (int)m_Entities.size())
 				{
@@ -496,8 +531,8 @@ namespace Crown {
 				// Without an explicit first size this window collapses: it sizes
 				// itself to its content, and its content is sized to the space
 				// available inside it.
-				ImGui::SetNextWindowPos(ImVec2(240.0f, 30.0f), ImGuiCond_FirstUseEver);
-				ImGui::SetNextWindowSize(ImVec2(760.0f, 470.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowPos(ImVec2(350.0f, 100.0f), ImGuiCond_FirstUseEver);
+				ImGui::SetNextWindowSize(ImVec2(660.0f, 430.0f), ImGuiCond_FirstUseEver);
 				ImGui::Begin("Viewport");
 				ImVec2 avail = ImGui::GetContentRegionAvail();
 				m_ViewportWidth  = (unsigned int)(avail.x > 0.0f ? avail.x : 0.0f);
@@ -626,6 +661,41 @@ namespace Crown {
 			return true;
 		}
 		return false;
+	}
+
+	void Application::StartPlaying()
+	{
+		if (m_SceneState == SceneState::Paused)      // resume, keep the running game
+		{
+			m_SceneState = SceneState::Play;
+			return;
+		}
+		if (m_SceneState == SceneState::Play)
+			return;
+
+		// Snapshot before the game touches anything. The id counter goes with it,
+		// or ids handed out during play would be skipped after Stop and a saved
+		// scene would have gaps for no reason.
+		m_EditSnapshot = m_Entities;
+		m_EditNextEntityID = m_NextEntityID;
+		m_Selected = -1;
+
+		m_SceneState = SceneState::Play;
+		OnPlay();
+	}
+
+	void Application::StopPlaying()
+	{
+		if (m_SceneState == SceneState::Edit)
+			return;
+
+		OnStop();
+
+		m_Entities = m_EditSnapshot;
+		m_NextEntityID = m_EditNextEntityID;
+		m_EditSnapshot.clear();
+		m_Selected = -1;                             // indices referred to the running scene
+		m_SceneState = SceneState::Edit;
 	}
 
 	void Application::LoadSceneFromDisk()

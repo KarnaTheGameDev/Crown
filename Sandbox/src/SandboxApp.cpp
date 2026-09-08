@@ -48,8 +48,27 @@ public:
 	Sandbox()
 		: m_Random(std::random_device{}())
 	{
+		CROWN_INFO("Press Play to start. Left/Right turn, Up thrusts, Space fires, R restarts.");
+	}
+
+	// The game builds its own scene when it starts rather than in the
+	// constructor, so the editor opens on whatever you were arranging and the
+	// game does not run over it.
+	void OnPlay() override
+	{
 		StartGame();
-		CROWN_INFO("Left/Right turn, Up thrusts, Space fires, R restarts.");
+	}
+
+	void OnStop() override
+	{
+		// The engine restores the entities; these are the game's own leftovers,
+		// and without clearing them a second Play would resume a finished match
+		// with a ship id pointing at something that no longer exists.
+		m_ShipID = 0;
+		m_Score = 0;
+		m_Lives = 3;
+		m_Wave = 0;
+		m_GameOver = false;
 	}
 
 	void OnUpdate(float dt) override
@@ -74,8 +93,8 @@ public:
 
 	void OnImGuiRender() override
 	{
-		ImGui::SetNextWindowPos(ImVec2(1012.0f, 250.0f), ImGuiCond_FirstUseEver);
-		ImGui::SetNextWindowSize(ImVec2(250.0f, 150.0f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowPos(ImVec2(1020.0f, 290.0f), ImGuiCond_FirstUseEver);
+		ImGui::SetNextWindowSize(ImVec2(260.0f, 160.0f), ImGuiCond_FirstUseEver);
 		ImGui::Begin("Asteroids");
 		ImGui::Text("Score %d", m_Score);
 		ImGui::Text("Lives %d", m_Lives);
@@ -124,7 +143,9 @@ private:
 
 	void StartGame()
 	{
-		// Collect first: destroying shifts the vector being iterated.
+		// Clears whatever is in the scene, including anything authored in the
+		// editor. Asteroids builds its own level; a game that played on the
+		// arranged scene would simply not do this.
 		std::vector<uint32_t> everything;
 		for (const Crown::Entity& e : GetEntities())
 			everything.push_back(e.ID);
