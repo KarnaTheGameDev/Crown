@@ -393,6 +393,17 @@ namespace Crown {
 				{
 					Entity& e = CreateEntity("Entity " + std::to_string(m_NextEntityID));
 					e.Scale = { 0.15f, 0.15f };
+
+					// Stagger new entities around the middle of the view. Dropping
+					// every one on the origin stacks them exactly, so the scene
+					// looks like it has a single entity until you drag one off the
+					// pile.
+					const int step = m_AddCounter++;
+					const float ring = 0.22f * (1 + step / 8);
+					const float angle = (step % 8) * 0.7853981f;
+					e.Position = { m_Camera->GetPosition().x + std::cos(angle) * ring,
+					               m_Camera->GetPosition().y + std::sin(angle) * ring, 0.0f };
+
 					m_Selected = (int)m_Entities.size() - 1;
 				}
 				ImGui::SameLine();

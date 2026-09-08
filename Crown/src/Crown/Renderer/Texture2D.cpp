@@ -42,8 +42,12 @@ namespace Crown {
 		// Nearest keeps the checkerboard crisp; swap to LINEAR for photographic art.
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 		glTextureParameteri(m_RendererID, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		// Clamp, not repeat. A sprite rect that reaches past 1.0 is nearly
+		// always a mistake, and repeating turns it into a tiled mess rather
+		// than something recognisably wrong. Tiling is a deliberate effect and
+		// can come back as a per-entity option when something wants it.
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+		glTextureParameteri(m_RendererID, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
 		// Rows are tightly packed; the default 4-byte alignment corrupts RGB
 		// images whose width is not a multiple of 4.

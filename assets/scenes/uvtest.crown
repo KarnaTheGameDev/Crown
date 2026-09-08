@@ -1,0 +1,19 @@
+crown-scene 1
+entity
+id 1
+name WholeImage
+pos -0.6 0 0
+rot 0
+scale 0.5 0.35
+sprite 0 0 1 1
+tint 1 1 1 1
+texture assets/textures/photo-test.png
+entity
+id 2
+name QuarterCell
+pos 0.6 0 0
+rot 0
+scale 0.5 0.35
+sprite 0 0.5 0.5 0.5
+tint 1 1 1 1
+texture assets/textures/photo-test.png
