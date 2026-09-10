@@ -5,6 +5,8 @@
     <BuildType Name="Release" />
     <Platform Name="x64" />
   </Configurations>
+  <Project Path="Crown\vendor\box2d\Box2D.vcxproj" Id="A434E80C-1049-10BE-D9CA-B31D459E0CEF">
+  </Project>
   <Project Path="Crown\Crown.vcxproj" Id="0ED5FB0C-7AE9-23BE-436B-C71DAF3E20EF">
   </Project>
   <Project Path="Crown\vendor\Glad\Glad.vcxproj" Id="BDD6857C-A90D-870D-52FA-6C103E10030F">

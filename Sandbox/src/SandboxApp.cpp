@@ -56,11 +56,28 @@ public:
 	// game does not run over it.
 	void OnPlay() override
 	{
-		StartGame();
+		// Only take over an empty scene. If something was authored in the
+		// editor, play that instead: throwing away someone's arrangement the
+		// moment they press Play would make the editor useless for anything
+		// but this one game.
+		m_RunningDemo = GetEntities().empty();
+		if (m_RunningDemo)
+			StartGame();
+		else
+			CROWN_INFO("Playing the authored scene ({0} entities).", GetEntities().size());
+	}
+
+	// Physics contacts arrive here whether the demo is running or not, which
+	// makes them visible while authoring a scene.
+	void OnCollision(uint32_t a, uint32_t b, bool beganTouching) override
+	{
+		if (!m_RunningDemo && beganTouching)
+			CROWN_INFO("Contact: {0} touched {1}", a, b);
 	}
 
 	void OnStop() override
 	{
+		m_RunningDemo = false;
 		// The engine restores the entities; these are the game's own leftovers,
 		// and without clearing them a second Play would resume a finished match
 		// with a ship id pointing at something that no longer exists.
@@ -73,6 +90,9 @@ public:
 
 	void OnUpdate(float dt) override
 	{
+		if (!m_RunningDemo)     // an authored scene is driven by physics alone
+			return;
+
 		if (dt > 0.1f)          // a debugger pause should not teleport everything
 			dt = 0.1f;
 
@@ -398,6 +418,7 @@ private:
 	std::vector<uint32_t> m_Expired;
 	std::vector<Hit>      m_Hits;
 
+	bool      m_RunningDemo = false;
 	uint32_t  m_ShipID = 0;
 	glm::vec2 m_ShipVelocity{ 0.0f, 0.0f };
 

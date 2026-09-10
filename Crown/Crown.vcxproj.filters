@@ -7,6 +7,9 @@
     <Filter Include="Crown\Events">
       <UniqueIdentifier>{3285C9C1-1EE8-5866-C76D-911CB3AF24E9}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Crown\Physics">
+      <UniqueIdentifier>{80067F2A-ECC6-FA60-B501-44DE21813F3D}</UniqueIdentifier>
+    </Filter>
     <Filter Include="Crown\Renderer">
       <UniqueIdentifier>{74A83A51-6076-2E57-490A-9F7D35770ABC}</UniqueIdentifier>
     </Filter>
@@ -55,6 +58,9 @@
     <ClInclude Include="src\Crown\MouseCodes.h">
       <Filter>Crown</Filter>
     </ClInclude>
+    <ClInclude Include="src\Crown\Physics\PhysicsWorld.h">
+      <Filter>Crown\Physics</Filter>
+    </ClInclude>
     <ClInclude Include="src\Crown\Renderer\Framebuffer.h">
       <Filter>Crown\Renderer</Filter>
     </ClInclude>
@@ -96,6 +102,9 @@
     </ClCompile>
     <ClCompile Include="src\Crown\Log.cpp">
       <Filter>Crown</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Crown\Physics\PhysicsWorld.cpp">
+      <Filter>Crown\Physics</Filter>
     </ClCompile>
     <ClCompile Include="src\Crown\Renderer\Framebuffer.cpp">
       <Filter>Crown\Renderer</Filter>

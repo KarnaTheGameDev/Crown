@@ -17,6 +17,7 @@ IncludeDir["Glad"] = "Crown/vendor/Glad/include"
 IncludeDir["glm"] = "Crown/vendor/glm"
 IncludeDir["ImGui"] = "Crown/vendor/imgui"
 IncludeDir["stb"] = "Crown/vendor/stb"
+IncludeDir["box2d"] = "Crown/vendor/box2d/include"
 
 include "Crown/vendor/GLFW"
 
@@ -91,6 +92,41 @@ project "ImGui"
 		runtime "Release"
 		optimize "on"
 
+project "Box2D"
+	location "Crown/vendor/box2d"
+	kind "StaticLib"
+	language "C"
+	cdialect "C17"
+	staticruntime "off"
+
+	targetdir ("bin/" .. outputdir .. "/%{prj.name}")
+	objdir ("bin-int/" .. outputdir .. "/%{prj.name}")
+
+	files
+	{
+		"Crown/vendor/box2d/src/**.c",
+		"Crown/vendor/box2d/src/**.h",
+		"Crown/vendor/box2d/include/**.h"
+	}
+
+	includedirs
+	{
+		"%{IncludeDir.box2d}",
+		"Crown/vendor/box2d/src"
+	}
+
+	filter "system:windows"
+		systemversion "latest"
+		defines { "_CRT_SECURE_NO_WARNINGS" }
+
+	filter "configurations:Debug"
+		runtime "Debug"
+		symbols "on"
+
+	filter "configurations:Release or Dist"
+		runtime "Release"
+		optimize "on"
+
 project "Crown"
 	location "Crown"
 	kind "StaticLib"
@@ -119,7 +155,8 @@ project "Crown"
 		"%{IncludeDir.glm}",
 		"%{IncludeDir.ImGui}",
 		"%{IncludeDir.ImGui}/backends",
-		"%{IncludeDir.stb}"
+		"%{IncludeDir.stb}",
+		"%{IncludeDir.box2d}"
 	}
 
 	links
@@ -127,6 +164,7 @@ project "Crown"
 		"GLFW",
 		"Glad",
 		"ImGui",
+		"Box2D",
 		"opengl32.lib",
 		"comdlg32.lib"
 	}

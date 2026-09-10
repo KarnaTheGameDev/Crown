@@ -34,6 +34,29 @@ namespace Crown {
 		glm::vec4 SpriteRect{ 0.0f, 0.0f, 1.0f, 1.0f };
 		glm::vec4 Tint{ 1.0f, 1.0f, 1.0f, 1.0f };
 
+		// --- physics ---------------------------------------------------------
+		// A description, not the simulation itself. Box2D owns the running
+		// state while playing and writes Position and Rotation back each step;
+		// these fields say what to build when play starts.
+
+		// None leaves the entity out of the simulation entirely, which is the
+		// default so that adding physics is a deliberate act.
+		enum class BodyType { None, Static, Dynamic, Kinematic };
+		BodyType Body = BodyType::None;
+
+		// Multiplies Scale, so a collider tracks the sprite unless told not to.
+		glm::vec2 ColliderSize{ 1.0f, 1.0f };
+
+		float Density = 1.0f;
+		float Friction = 0.3f;
+		float Restitution = 0.0f;      // bounciness, 0 to 1
+
+		// Reports overlaps without pushing anything: pickups, triggers, goals.
+		bool IsSensor = false;
+
+		// Stops a body tipping over. What most 2D characters want.
+		bool FixedRotation = false;
+
 		// Whatever the game needs to hang off this entity: velocity, health, a
 		// state machine. The engine never reads it, so it stays out of the
 		// engine's vocabulary, and it dies with the entity rather than leaving

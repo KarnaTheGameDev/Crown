@@ -1,0 +1,49 @@
+crown-scene 1
+entity
+id 1
+name Floor
+pos 0 -0.75 0
+rot 0
+scale 2.2 0.12
+sprite 0 0 1 1
+tint 0.35 0.4 0.5 1
+body 1
+collider 1 1
+material 1 0.5 0
+bodyflags 0 0
+entity
+id 2
+name BoxA
+pos -0.35 0.2 0
+rot 0
+scale 0.18 0.18
+sprite 0 0 1 1
+tint 0.9 0.45 0.35 1
+body 2
+collider 1 1
+material 1 0.4 0.15
+bodyflags 0 0
+entity
+id 3
+name BoxB
+pos -0.1 0.55 0
+rot 15
+scale 0.18 0.18
+sprite 0 0 1 1
+tint 0.45 0.75 0.9 1
+body 2
+collider 1 1
+material 1 0.4 0.15
+bodyflags 0 0
+entity
+id 4
+name BoxC
+pos 0.2 0.9 0
+rot 0
+scale 0.18 0.18
+sprite 0 0 1 1
+tint 0.55 0.85 0.5 1
+body 2
+collider 1 1
+material 1 0.4 0.3
+bodyflags 0 0

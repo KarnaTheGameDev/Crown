@@ -267,7 +267,17 @@ namespace Crown {
 			lastTime = time;
 
 			if (m_SceneState == SceneState::Play)
+			{
+				m_Contacts.clear();
+				m_Physics.Step(dt, m_Entities, m_Contacts);
+
+				// After the step, so an entity destroyed in response to a
+				// contact cannot be one the solver is still working on.
+				for (const PhysicsWorld::Contact& c : m_Contacts)
+					OnCollision(c.A, c.B, c.Began);
+
 				OnUpdate(dt);
+			}
 
 			if (m_StatusTime > 0.0f)
 				m_StatusTime -= dt;
@@ -512,6 +522,29 @@ namespace Crown {
 						m_StatusTime = 2.0f;
 					}
 
+					ImGui::SeparatorText("Physics");
+
+					const char* bodyNames[] = { "None", "Static", "Dynamic", "Kinematic" };
+					int body = (int)e.Body;
+					if (ImGui::Combo("Body", &body, bodyNames, IM_ARRAYSIZE(bodyNames)))
+						e.Body = (Entity::BodyType)body;
+					if (ImGui::IsItemHovered())
+						ImGui::SetTooltip("Static never moves.\nDynamic is pushed by gravity and collisions.\nKinematic moves only when you move it.");
+
+					if (e.Body != Entity::BodyType::None)
+					{
+						ImGui::DragFloat2("Collider size", &e.ColliderSize.x, 0.01f, 0.01f, 10.0f);
+						ImGui::DragFloat("Density", &e.Density, 0.05f, 0.0f, 100.0f);
+						ImGui::DragFloat("Friction", &e.Friction, 0.01f, 0.0f, 1.0f);
+						ImGui::DragFloat("Bounciness", &e.Restitution, 0.01f, 0.0f, 1.0f);
+						ImGui::Checkbox("Fixed rotation", &e.FixedRotation);
+						ImGui::SameLine();
+						ImGui::Checkbox("Sensor", &e.IsSensor);
+
+						if (m_SceneState != SceneState::Edit)
+							ImGui::TextDisabled("Editing these takes effect on the next Play");
+					}
+
 					ImGui::PopItemWidth();
 
 					// Preview with the entity's own UVs, v flipped to match how the
@@ -620,6 +653,11 @@ namespace Crown {
 		return m_Entities.back();
 	}
 
+	void Application::AddPhysicsBody(Entity& e)
+	{
+		m_Physics.AddBody(e);
+	}
+
 	Entity* Application::FindEntity(uint32_t id)
 	{
 		if (id == 0)
@@ -660,6 +698,7 @@ namespace Crown {
 			if (m_Entities[i].ID != id)
 				continue;
 
+			m_Physics.DestroyBody(id);      // before the entity goes, while the id still maps
 			m_Entities.erase(m_Entities.begin() + i);
 
 			// The editor's selection is an index, so it has to move with the
@@ -693,6 +732,10 @@ namespace Crown {
 
 		m_SceneState = SceneState::Play;
 		OnPlay();
+
+		// After OnPlay, so bodies are built for entities the game just created
+		// rather than only the ones that were authored.
+		m_Physics.Begin(m_Entities, m_Gravity);
 	}
 
 	void Application::StopPlaying()
@@ -700,6 +743,7 @@ namespace Crown {
 		if (m_SceneState == SceneState::Edit)
 			return;
 
+		m_Physics.End();
 		OnStop();
 
 		m_Entities = m_EditSnapshot;

@@ -12,3 +12,6 @@
 	path = Crown/vendor/imgui
 	url = https://github.com/ocornut/imgui
 	branch = docking
+[submodule "Crown/vendor/box2d"]
+	path = Crown/vendor/box2d
+	url = https://github.com/erincatto/box2d

@@ -41,6 +41,16 @@ namespace Crown {
 				                 << e.SpriteRect.z << ' ' << e.SpriteRect.w << '\n';
 				out << "tint "  << e.Tint.r << ' ' << e.Tint.g << ' ' << e.Tint.b << ' ' << e.Tint.a << '\n';
 
+				// Only written when the entity actually has a body, so scenes
+				// without physics stay as short as they were.
+				if (e.Body != Entity::BodyType::None)
+				{
+					out << "body "      << (int)e.Body << '\n';
+					out << "collider "  << e.ColliderSize.x << ' ' << e.ColliderSize.y << '\n';
+					out << "material "  << e.Density << ' ' << e.Friction << ' ' << e.Restitution << '\n';
+					out << "bodyflags " << (e.FixedRotation ? 1 : 0) << ' ' << (e.IsSensor ? 1 : 0) << '\n';
+				}
+
 				// Only when set, and read back as the rest of the line: a path is
 				// the one field here that can legitimately contain spaces.
 				if (!e.Texture.empty())
@@ -116,6 +126,25 @@ namespace Crown {
 			else if (key == "sprite"){ ok = (bool)(ls >> e.SpriteRect.x >> e.SpriteRect.y
 			                                          >> e.SpriteRect.z >> e.SpriteRect.w); }
 			else if (key == "texture") { std::getline(ls >> std::ws, e.Texture); }
+			else if (key == "body")
+			{
+				int type = 0;
+				ok = (bool)(ls >> type);
+				// Clamped rather than trusted: a file could name a body type
+				// this build does not have, and casting that straight to the
+				// enum would hand Box2D a garbage value.
+				if (ok && type >= 0 && type <= (int)Entity::BodyType::Kinematic)
+					e.Body = (Entity::BodyType)type;
+			}
+			else if (key == "collider") { ok = (bool)(ls >> e.ColliderSize.x >> e.ColliderSize.y); }
+			else if (key == "material") { ok = (bool)(ls >> e.Density >> e.Friction >> e.Restitution); }
+			else if (key == "bodyflags")
+			{
+				int fixedRotation = 0, sensor = 0;
+				ok = (bool)(ls >> fixedRotation >> sensor);
+				e.FixedRotation = fixedRotation != 0;
+				e.IsSensor = sensor != 0;
+			}
 			else if (key == "tint")  { ok = (bool)(ls >> e.Tint.r >> e.Tint.g >> e.Tint.b >> e.Tint.a); }
 			else continue;                                 // unknown key: ignore, so older builds tolerate newer files
 

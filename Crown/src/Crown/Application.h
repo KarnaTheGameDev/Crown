@@ -6,6 +6,7 @@
 #include "Events/ApplicationEvent.h"
 #include "Scene/Entity.h"
 #include "Renderer/TextureLibrary.h"
+#include "Physics/PhysicsWorld.h"
 
 #include <glm/glm.hpp>
 
@@ -42,6 +43,10 @@ namespace Crown {
 		virtual void OnPlay() {}
 		virtual void OnStop() {}
 
+		// Two entities started or stopped touching. Dispatched after the step
+		// finishes, so destroying an entity from here is safe.
+		virtual void OnCollision(uint32_t a, uint32_t b, bool beganTouching) {}
+
 		// Called inside the editor's ImGui frame so the client can draw its own
 		// panels. Same shape as OnUpdate: the client needed somewhere to put a
 		// score, and it had none.
@@ -50,6 +55,12 @@ namespace Crown {
 		// Creates an entity with a fresh id and returns it. Use this rather than
 		// pushing onto GetEntities(), or the entity has no id to refer to later.
 		Entity& CreateEntity(const std::string& name = "Entity");
+
+		// Give an entity created during play a body. Entities that exist when
+		// Play is pressed get one automatically; ones spawned afterwards need
+		// this, because the engine cannot know when the client has finished
+		// filling the fields in.
+		void AddPhysicsBody(Entity& entity);
 
 		// Null once the entity is deleted. Look up every frame rather than
 		// caching the pointer: the vector reallocates as entities are added.
@@ -70,6 +81,9 @@ namespace Crown {
 		std::vector<Entity>& GetEntities() { return m_Entities; }
 
 		SceneState GetSceneState() const { return m_SceneState; }
+
+		// Only simulating while playing, so this is empty in Edit.
+		PhysicsWorld& GetPhysics() { return m_Physics; }
 
 		void OnEvent(Event& e);
 
@@ -95,6 +109,10 @@ namespace Crown {
 		// The scene as it was when Play was pressed. Restored on Stop.
 		std::vector<Entity> m_EditSnapshot;
 		uint32_t m_EditNextEntityID = 1;
+
+		PhysicsWorld m_Physics;
+		std::vector<PhysicsWorld::Contact> m_Contacts;   // reused each frame
+		glm::vec2 m_Gravity{ 0.0f, -9.8f };
 		int m_Selected = -1;               // index into m_Entities, -1 for none
 		glm::ivec2 m_SheetGrid{ 4, 4 };    // editor-only sprite sheet helper
 		int m_SheetCell = 0;

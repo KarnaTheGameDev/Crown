@@ -77,7 +77,7 @@
       <PrecompiledHeaderFile>crpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>CROWN_PLATFORM_WINDOWS;GLFW_INCLUDE_NONE;CROWN_DEBUG;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;vendor\imgui;vendor\imgui\backends;vendor\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;vendor\imgui;vendor\imgui\backends;vendor\stb;vendor\box2d\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <DebugInformationFormat>EditAndContinue</DebugInformationFormat>
       <Optimization>Disabled</Optimization>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
@@ -101,7 +101,7 @@
       <PrecompiledHeaderFile>crpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>CROWN_PLATFORM_WINDOWS;GLFW_INCLUDE_NONE;CROWN_RELEASE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;vendor\imgui;vendor\imgui\backends;vendor\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;vendor\imgui;vendor\imgui\backends;vendor\stb;vendor\box2d\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -129,7 +129,7 @@
       <PrecompiledHeaderFile>crpch.h</PrecompiledHeaderFile>
       <WarningLevel>Level3</WarningLevel>
       <PreprocessorDefinitions>CROWN_PLATFORM_WINDOWS;GLFW_INCLUDE_NONE;CROWN_DIST;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;vendor\imgui;vendor\imgui\backends;vendor\stb;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>src;vendor\spdlog\include;vendor\GLFW\include;vendor\Glad\include;vendor\glm;vendor\imgui;vendor\imgui\backends;vendor\stb;vendor\box2d\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <Optimization>Full</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -164,6 +164,7 @@
     <ClInclude Include="src\Crown\KeyCodes.h" />
     <ClInclude Include="src\Crown\Log.h" />
     <ClInclude Include="src\Crown\MouseCodes.h" />
+    <ClInclude Include="src\Crown\Physics\PhysicsWorld.h" />
     <ClInclude Include="src\Crown\Renderer\Framebuffer.h" />
     <ClInclude Include="src\Crown\Renderer\OrthographicCamera.h" />
     <ClInclude Include="src\Crown\Renderer\Shader.h" />
@@ -180,6 +181,7 @@
     <ClCompile Include="src\Crown\Application.cpp" />
     <ClCompile Include="src\Crown\Input.cpp" />
     <ClCompile Include="src\Crown\Log.cpp" />
+    <ClCompile Include="src\Crown\Physics\PhysicsWorld.cpp" />
     <ClCompile Include="src\Crown\Renderer\Framebuffer.cpp" />
     <ClCompile Include="src\Crown\Renderer\OrthographicCamera.cpp" />
     <ClCompile Include="src\Crown\Renderer\Shader.cpp" />
@@ -201,6 +203,9 @@
     </ProjectReference>
     <ProjectReference Include="vendor\imgui\ImGui.vcxproj">
       <Project>{C0FF640D-2C14-8DBE-F595-301E616989EF}</Project>
+    </ProjectReference>
+    <ProjectReference Include="vendor\box2d\Box2D.vcxproj">
+      <Project>{A434E80C-1049-10BE-D9CA-B31D459E0CEF}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
