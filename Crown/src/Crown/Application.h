@@ -92,7 +92,11 @@ namespace Crown {
 		inline static Application& Get() { return *s_Instance; }
 	private:
 		bool OnWindowClose(WindowCloseEvent& e);
-		void LoadSceneFromDisk();
+		void NewScene();
+		void OpenScene();
+		bool SaveScene(bool saveAs);
+		void LoadSceneFrom(const std::string& path);
+		void RefreshWindowTitle();
 		void StartPlaying();
 		void StopPlaying();
 
@@ -113,6 +117,12 @@ namespace Crown {
 		PhysicsWorld m_Physics;
 		std::vector<PhysicsWorld::Contact> m_Contacts;   // reused each frame
 		glm::vec2 m_Gravity{ 0.0f, -9.8f };
+
+		// Empty until the scene has been saved somewhere, which is what makes
+		// Save fall through to Save As the first time.
+		std::string m_ScenePath;
+		bool m_SceneDirty = false;
+		std::string m_TitleShown;          // so the title is only set when it changes
 		int m_Selected = -1;               // index into m_Entities, -1 for none
 		glm::ivec2 m_SheetGrid{ 4, 4 };    // editor-only sprite sheet helper
 		int m_SheetCell = 0;

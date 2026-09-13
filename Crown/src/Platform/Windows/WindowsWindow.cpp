@@ -156,6 +156,12 @@ namespace Crown {
 		glfwSwapBuffers(m_Window);
 	}
 
+	void WindowsWindow::SetTitle(const std::string& title)
+	{
+		m_Data.Title = title;
+		glfwSetWindowTitle(m_Window, title.c_str());
+	}
+
 	void WindowsWindow::SetVSync(bool enabled)
 	{
 		glfwSwapInterval(enabled ? 1 : 0);

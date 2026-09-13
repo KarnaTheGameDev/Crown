@@ -35,6 +35,9 @@ namespace Crown {
 
 		// Window attributes
 		virtual void SetEventCallback(const EventCallbackFn& callback) = 0;
+		// Shown in the OS title bar. The editor uses it for the open scene.
+		virtual void SetTitle(const std::string& title) = 0;
+
 		virtual void SetVSync(bool enabled) = 0;
 		virtual bool IsVSync() const = 0;
 

@@ -24,8 +24,6 @@ namespace Crown {
 	// Half-height of the visible world, in world units.
 	static constexpr float s_CameraZoom = 0.9f;
 
-	static constexpr const char* s_ScenePath = "assets/scenes/scene.crown";
-
 	namespace {
 
 		// The exe may be launched from bin/, from the debugger, or from a shipped
@@ -282,6 +280,8 @@ namespace Crown {
 			if (m_StatusTime > 0.0f)
 				m_StatusTime -= dt;
 
+			RefreshWindowTitle();
+
 			// Track the viewport panel. Resize is a no-op when nothing changed.
 			if (m_ViewportWidth > 0 && m_ViewportHeight > 0)
 			{
@@ -338,15 +338,41 @@ namespace Crown {
 			ImGui_ImplOpenGL3_NewFrame();
 			ImGui_ImplGlfw_NewFrame();
 			ImGui::NewFrame();
+			if (ImGui::BeginMainMenuBar())
+			{
+				if (ImGui::BeginMenu("File"))
+				{
+					if (ImGui::MenuItem("New", "Ctrl+N"))         NewScene();
+					if (ImGui::MenuItem("Open...", "Ctrl+O"))     OpenScene();
+					ImGui::Separator();
+					if (ImGui::MenuItem("Save", "Ctrl+S"))        SaveScene(false);
+					if (ImGui::MenuItem("Save As...", "Ctrl+Shift+S")) SaveScene(true);
+					ImGui::Separator();
+					if (ImGui::MenuItem("Exit"))                  m_Running = false;
+					ImGui::EndMenu();
+				}
+				if (ImGui::BeginMenu("Scene"))
+				{
+					ImGui::DragFloat2("Gravity", &m_Gravity.x, 0.1f);
+					if (ImGui::IsItemDeactivatedAfterEdit())
+						m_SceneDirty = true;
+					ImGui::TextDisabled("Applied when Play starts");
+					ImGui::EndMenu();
+				}
+				ImGui::EndMainMenuBar();
+			}
+
 			ImGui::DockSpaceOverViewport();
 			OnImGuiRender();
 
 			if (ImGui::GetIO().KeyCtrl)
 			{
 				if (ImGui::IsKeyPressed(ImGuiKey_S, false))
-					SaveScene(m_Entities, s_ScenePath);
+					SaveScene(ImGui::GetIO().KeyShift);
 				if (ImGui::IsKeyPressed(ImGuiKey_O, false))
-					LoadSceneFromDisk();
+					OpenScene();
+				if (ImGui::IsKeyPressed(ImGuiKey_N, false))
+					NewScene();
 			}
 			{
 				const glm::vec3& pos = m_Camera->GetPosition();
@@ -415,6 +441,7 @@ namespace Crown {
 					               m_Camera->GetPosition().y + std::sin(angle) * ring, 0.0f };
 
 					m_Selected = (int)m_Entities.size() - 1;
+					m_SceneDirty = true;
 				}
 				ImGui::SameLine();
 				if (ImGui::Button("Delete") && m_Selected >= 0)
@@ -422,13 +449,8 @@ namespace Crown {
 					m_Entities.erase(m_Entities.begin() + m_Selected);
 					// Deleting the last row would leave the index past the end.
 					m_Selected = m_Entities.empty() ? -1 : std::min(m_Selected, (int)m_Entities.size() - 1);
+					m_SceneDirty = true;
 				}
-				ImGui::SameLine();
-				if (ImGui::Button("Save"))
-					SaveScene(m_Entities, s_ScenePath);
-				ImGui::SameLine();
-				if (ImGui::Button("Load"))
-					LoadSceneFromDisk();
 				ImGui::Separator();
 
 				for (int i = 0; i < (int)m_Entities.size(); i++)
@@ -547,6 +569,13 @@ namespace Crown {
 
 					ImGui::PopItemWidth();
 
+					// One check rather than one per widget. Scoped to this window
+					// so pressing Play does not mark the scene unsaved, and
+					// deliberately eager: being asked to save something that did
+					// not change is a smaller problem than losing an edit.
+					if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && ImGui::IsAnyItemActive())
+						m_SceneDirty = true;
+
 					// Preview with the entity's own UVs, v flipped to match how the
 					// viewport draws it, so what you see here is what renders.
 					const Texture2D& preview = m_Textures.Get(e.Texture);
@@ -625,7 +654,10 @@ namespace Crown {
 						                - ViewportToWorld(before, origin, avail, invViewProj);
 
 						if (m_Selected >= 0 && m_Selected < (int)m_Entities.size())
+						{
 							m_Entities[m_Selected].Position += glm::vec3(moved, 0.0f);
+							m_SceneDirty = true;
+						}
 
 						ImGui::ResetMouseDragDelta(ImGuiMouseButton_Left);
 					}
@@ -753,10 +785,30 @@ namespace Crown {
 		m_SceneState = SceneState::Edit;
 	}
 
-	void Application::LoadSceneFromDisk()
+	void Application::NewScene()
 	{
-		if (!LoadScene(m_Entities, s_ScenePath))
-			return;
+		StopPlaying();
+		m_Entities.clear();
+		m_NextEntityID = 1;
+		m_Selected = -1;
+		m_ScenePath.clear();
+		m_SceneDirty = false;
+		CROWN_CORE_INFO("New scene");
+	}
+
+	void Application::OpenScene()
+	{
+		std::string chosen = FileDialog::Open("Crown scenes\0*.crown\0All files\0*.*\0");
+		if (!chosen.empty())
+			LoadSceneFrom(chosen);
+	}
+
+	void Application::LoadSceneFrom(const std::string& path)
+	{
+		StopPlaying();
+
+		if (!Crown::LoadScene(m_Entities, path))
+			return;                                  // LoadScene already said why
 
 		// Ids come back from the file, so the counter has to clear the highest
 		// one or the next entity created would collide with a loaded one.
@@ -770,7 +822,50 @@ namespace Crown {
 			if (e.ID == 0)
 				e.ID = m_NextEntityID++;
 
-		m_Selected = -1;                 // indices referred to the old scene
+		m_Selected = -1;                             // indices referred to the old scene
+		m_ScenePath = path;
+		m_SceneDirty = false;
+	}
+
+	bool Application::SaveScene(bool saveAs)
+	{
+		// A scene that has never been saved has nowhere to go, so Save behaves
+		// as Save As until it does.
+		std::string path = m_ScenePath;
+		if (saveAs || path.empty())
+		{
+			path = FileDialog::Save("Crown scenes\0*.crown\0All files\0*.*\0", "crown");
+			if (path.empty())
+				return false;                        // cancelled
+		}
+
+		// Saving while playing would write the running game rather than the
+		// scene that was authored, which is never what is wanted.
+		const std::vector<Entity>& toSave =
+			(m_SceneState == SceneState::Edit) ? m_Entities : m_EditSnapshot;
+
+		if (!Crown::SaveScene(toSave, path))
+			return false;
+
+		m_ScenePath = path;
+		m_SceneDirty = false;
+		m_Status = "Saved " + path;
+		m_StatusTime = 2.0f;
+		return true;
+	}
+
+	void Application::RefreshWindowTitle()
+	{
+		std::string name = m_ScenePath.empty() ? "untitled" : m_ScenePath;
+		std::string title = "Crown Engine - " + name + (m_SceneDirty ? "*" : "");
+
+		// Only when it actually changes: setting it every frame makes the title
+		// bar flicker on some Windows themes.
+		if (title != m_TitleShown)
+		{
+			m_TitleShown = title;
+			m_Window->SetTitle(title);
+		}
 	}
 
 	bool Application::OnWindowClose(WindowCloseEvent& e)
