@@ -4,10 +4,10 @@ A 2D game engine in C++, built from scratch on OpenGL. Windows only.
 
 ![The Crown editor](docs/editor.gif)
 
-Hierarchy on the left, viewport in the middle, properties on the right. The scene
-renders into a framebuffer rather than straight to the window, so it can live
-inside a panel. Sprites are drawn from a texture atlas, and scenes save to plain
-text.
+An editor with a scene hierarchy, a properties panel and a viewport you can click
+into; sprites from any image you point it at; Box2D physics; and scenes that save
+to plain text. Games are written in C++ against a small client API — the engine
+knows nothing about your game.
 
 ## Building
 
@@ -34,6 +34,144 @@ Set **Sandbox** as the startup project the first time; premake does not mark one
 Assets are found by walking up from the executable, so it does not matter whether
 you launch from Visual Studio, from `bin/`, or by double-clicking.
 
+## Writing a game
+
+Everything you write lives in `Sandbox/src/SandboxApp.cpp`. You subclass
+`Application` and override what you need. `#include <Crown.h>` brings in the whole
+API, plus glm.
+
+```cpp
+#include <Crown.h>
+
+class MyGame : public Crown::Application
+{
+public:
+    void OnPlay() override                       // Play pressed: build the level
+    {
+        Crown::Entity& player = CreateEntity("Player");
+        player.Position = { 0.0f, 0.0f, 0.0f };
+        player.Scale = { 0.2f, 0.2f };
+        player.Texture = "assets/textures/player.png";
+        player.Body = Crown::Entity::BodyType::Dynamic;
+        player.FixedRotation = true;             // stop it toppling over
+        m_PlayerID = player.ID;                  // keep the id, never a pointer
+    }
+
+    void OnUpdate(float dt) override             // once per frame while playing
+    {
+        Crown::Entity* player = FindEntity(m_PlayerID);
+        if (!player) return;                     // it may have been deleted
+
+        if (Crown::Input::IsKeyPressed(Crown::Key::Left))
+            player->Position.x -= 2.0f * dt;
+    }
+
+    void OnCollision(uint32_t a, uint32_t b, bool began) override
+    {
+        if (began) CROWN_INFO("{0} touched {1}", a, b);
+    }
+
+private:
+    uint32_t m_PlayerID = 0;
+};
+
+Crown::Application* Crown::CreateApplication() { return new MyGame(); }
+```
+
+### The client API
+
+| | |
+|---|---|
+| `OnUpdate(float dt)` | Every frame **while playing**. Not called in Edit. |
+| `OnPlay()` / `OnStop()` | Play pressed / stopped. Build your level in `OnPlay`. |
+| `OnCollision(a, b, began)` | Two entities started or stopped touching. |
+| `OnImGuiRender()` | Draw your own panels — score, debug, tools. |
+| `CreateEntity(name)` | Returns a reference. Read `.ID` from it immediately. |
+| `FindEntity(id)` | `nullptr` once the entity is gone. |
+| `FindOverlapping(e, out)` | Every entity overlapping this one, by id. No simulation needed. |
+| `DestroyEntity(id)` | Removes it. **Invalidates every `Entity*` you hold.** |
+| `GetEntities()` | The whole scene, if you want to iterate it. |
+| `Crown::Input::IsKeyPressed(Crown::Key::Space)` | Keyboard. Returns false while an editor field has focus. |
+| `CROWN_INFO("x is {0}", x)` | Logging. Also `CROWN_WARN`, `CROWN_ERROR`. |
+
+Two rules that matter:
+
+**Hold ids, not pointers.** `CreateEntity` and `DestroyEntity` both move the
+underlying vector, so any `Entity*` you kept across one of those calls is
+dangling. Look entities up by id each time you need them.
+
+**Put game state on the entity.** `Entity::UserData` is a `std::any` the engine
+never reads, so a struct of your own travels with the entity and dies with it:
+
+```cpp
+struct Bullet { glm::vec2 Velocity; float Life; };
+
+bullet.UserData = Bullet{ direction * 3.0f, 1.5f };
+
+if (Bullet* b = std::any_cast<Bullet>(&e.UserData))
+    e.Position += glm::vec3(b->Velocity * dt, 0.0f);
+```
+
+It is not saved to the scene file — gameplay state is transient, and a saved
+scene is an arrangement of things rather than the middle of a game.
+
+## Adding art
+
+Drop a PNG anywhere under `assets/`, select an entity, and use **Browse…** in the
+Properties panel. Paths are stored relative to the project so a scene still opens
+on someone else's machine.
+
+For a sprite sheet, set **Sheet columns/rows** and drag **Cell** — it writes the
+UV rectangle for you. `Sprite rect` is that rectangle directly: `x y` is the
+origin and `z w` the size, both 0 to 1. **Whole image** resets it.
+
+An entity with no texture draws as a plain white quad multiplied by its **Tint**,
+so it is visible before you have any art. A path that fails to load does the same
+and says why in the log, once — a broken asset never takes the program down.
+
+**Reload from disk** re-reads the image files, so you can edit a PNG in another
+program and see it update without restarting.
+
+## Physics
+
+Set **Body** on an entity to give it a rigid body:
+
+| | |
+|---|---|
+| **None** | Not simulated. The default. |
+| **Static** | Never moves. Floors, walls. |
+| **Dynamic** | Falls, collides, gets pushed. |
+| **Kinematic** | Moves only when you move it, but pushes dynamic bodies. |
+
+`Collider size` multiplies `Scale`, so the collider follows the sprite unless you
+say otherwise. `Sensor` reports overlaps without pushing anything — pickups,
+triggers, goals. `Fixed rotation` stops a body toppling, which is what most
+characters want. Gravity is under the **Scene** menu.
+
+Physics only runs while playing, so nothing drifts while you are arranging a
+scene. Bodies are built when Play is pressed and destroyed on Stop. Entities you
+spawn mid-play need `AddPhysicsBody(entity)` once you have filled their fields in.
+
+`assets/scenes/physics-test.crown` is a floor and three boxes — open it and press
+Play.
+
+## The editor
+
+**Play / Pause / Stop** in the toolbar. Play copies the scene and runs the game on
+the copy; Stop throws the copy away and restores exactly what you had. Nothing a
+game does can damage what you authored.
+
+Click a sprite in the viewport to select it, drag to move it. **Add** and
+**Delete** are in the Hierarchy. The window title shows the open scene and a `*`
+when there are unsaved changes.
+
+| | |
+|---|---|
+| `Ctrl+N` / `Ctrl+O` | New scene / Open |
+| `Ctrl+S` / `Ctrl+Shift+S` | Save / Save As |
+| `W` `A` `S` `D` | Move the editor camera |
+| `Q` `E` | Rotate the editor camera |
+
 ## Dependencies
 
 | | | |
@@ -41,6 +179,7 @@ you launch from Visual Studio, from `bin/`, or by double-clicking.
 | [GLFW](https://github.com/TheCherno/glfw) | window and input | submodule |
 | [glm](https://github.com/g-truc/glm) | vector and matrix maths | submodule |
 | [Dear ImGui](https://github.com/ocornut/imgui) | editor UI (docking branch) | submodule |
+| [Box2D](https://github.com/erincatto/box2d) | 2D physics (v3.1.1) | submodule |
 | [spdlog](https://github.com/gabime/spdlog) | logging | submodule |
 | [glad](https://github.com/Dav1dde/glad) | OpenGL 4.6 core loader | vendored source |
 | [stb_image](https://github.com/nothings/stb) | image loading | vendored header |
@@ -57,35 +196,31 @@ python -m glad --api gl:core=4.6 --extensions="" c
 ```
 
 Extensions are excluded deliberately: including all 623 takes the generated
-source from 345 KB to 1.5 MB for entry points nothing calls. Add specific ones
-to `--extensions` if something needs them.
-
-## Controls
-
-| | |
-|---|---|
-| `W` `A` `S` `D` | move the camera |
-| `Q` `E` | rotate the camera |
-| `Ctrl+S` | save the scene to `assets/scenes/scene.crown` |
-| `Ctrl+O` | load it back |
-
-Camera input is ignored while an ImGui widget has keyboard focus, so typing into
-a field does not also drive the camera.
+source from 345 KB to 1.5 MB for entry points nothing calls.
 
 ## Scene format
 
-Scenes are line-oriented text, no serialisation library:
+Line-oriented text, no serialisation library:
 
 ```
 crown-scene 1
 entity
-name Sprite 0
-pos -1.425 -0.825 0
+id 1
+name Floor
+pos 0 -0.75 0
 rot 0
-scale 0.09 0.09
-cell 0
-tint 1 1 1 1
+scale 2.2 0.12
+sprite 0 0 1 1
+tint 0.35 0.4 0.5 1
+body 1
+collider 1 1
+material 1 0.5 0
+bodyflags 0 0
 ```
+
+`body` is 0 None, 1 Static, 2 Dynamic, 3 Kinematic. `material` is density,
+friction, bounciness. `bodyflags` is fixed rotation then sensor. Physics lines
+are only written when the entity has a body, and `texture` only when one is set.
 
 Unknown keys are skipped, so a file written by a later build still loads what
 this one understands. A higher version number in the header is rejected outright.
@@ -97,23 +232,29 @@ writes alongside the target and renames over it.
 These are decisions, not gaps. Each one is cheap to add later and would be a
 guess today:
 
+- **No scripting runtime.** Games are C++ against the client API.
 - **No Renderer / RendererAPI abstraction.** One backend, no batching, no sort
   step. Three layers of indirection over `glDrawElements` would buy nothing.
 - **No VertexArray / BufferLayout classes.** One mesh, one vertex layout.
-- **No ECS.** `Entity` is a plain struct in a `std::vector`. At a few hundred
-  sprites that beats a component store on both readability and cache behaviour.
+- **No ECS.** `Entity` is a plain struct in a `std::vector`, with `UserData` for
+  whatever the game needs. Box2D holds the simulation state.
 - **No layer stack.** There are no layers.
-- **No batching.** 240 draw calls at 144 FPS is not a measured problem. If it
+- **No batching.** One draw call per entity, still not a measured problem. If it
   becomes one, instancing is about ten lines.
+- **No asset GUIDs or import pipeline.** Paths are enough.
 
 ## Layout
 
 ```
 Crown/src/Crown/          engine
-  Renderer/               Shader, Texture2D, Framebuffer, OrthographicCamera
+  Renderer/               Shader, Texture2D, TextureLibrary, Framebuffer, OrthographicCamera
+  Physics/                PhysicsWorld
   Scene/                  Entity, SceneSerializer
   Events/                 event types and dispatcher
-Crown/src/Platform/       Windows implementations
-Sandbox/                  client application
+Crown/src/Platform/       Windows implementations, including the file dialogs
+Sandbox/                  the sample game - copy this to start your own
 assets/                   textures and scenes
 ```
+
+`Sandbox` is Asteroids, written entirely against the API above. It is the worked
+example: read it, then replace it.
