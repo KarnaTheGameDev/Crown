@@ -62,6 +62,26 @@ namespace Crown {
 		// filling the fields in.
 		void AddPhysicsBody(Entity& entity);
 
+		// While playing, the simulation owns the transform of anything with a
+		// body: the step overwrites Entity::Position every frame, so assigning
+		// to it fights the solver and loses. Drive a body through these.
+		// The first three do nothing to an entity without a body.
+		void SetVelocity(uint32_t id, glm::vec2 velocity);
+		glm::vec2 GetVelocity(uint32_t id) const;
+
+		// Mass-dependent, so one explosion moves a crate further than a boulder.
+		// Use SetVelocity when you want an exact speed whatever the body weighs.
+		void ApplyImpulse(uint32_t id, glm::vec2 impulse);
+
+		// Moves an entity outright - respawn, screen wrap, a door. Works with
+		// or without a body; rotation defaults to upright.
+		void Teleport(uint32_t id, glm::vec2 position, float rotationDegrees = 0.0f);
+
+		// Zero for a top-down or space game. Applies immediately while playing,
+		// and is what the next Play starts with, so OnPlay is a fine place for it.
+		void SetGravity(glm::vec2 gravity);
+		glm::vec2 GetGravity() const { return m_Gravity; }
+
 		// Null once the entity is deleted. Look up every frame rather than
 		// caching the pointer: the vector reallocates as entities are added.
 		Entity* FindEntity(uint32_t id);

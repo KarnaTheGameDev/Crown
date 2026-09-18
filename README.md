@@ -59,11 +59,18 @@ public:
 
     void OnUpdate(float dt) override             // once per frame while playing
     {
-        Crown::Entity* player = FindEntity(m_PlayerID);
-        if (!player) return;                     // it may have been deleted
+        // The simulation owns the position of anything with a body, so ask for
+        // a speed instead of assigning to Position - the next step undoes that.
+        float walk = 0.0f;
+        if (Crown::Input::IsKeyPressed(Crown::Key::Left))  walk -= 1.0f;
+        if (Crown::Input::IsKeyPressed(Crown::Key::Right)) walk += 1.0f;
 
-        if (Crown::Input::IsKeyPressed(Crown::Key::Left))
-            player->Position.x -= 2.0f * dt;
+        glm::vec2 velocity = GetVelocity(m_PlayerID);
+        SetVelocity(m_PlayerID, { walk * 2.0f, velocity.y });   // leave the fall alone
+
+        bool standing = velocity.y > -0.05f && velocity.y < 0.05f;
+        if (standing && Crown::Input::IsKeyPressed(Crown::Key::Space))
+            SetVelocity(m_PlayerID, { walk * 2.0f, 3.5f });     // jump, if standing on something
     }
 
     void OnCollision(uint32_t a, uint32_t b, bool began) override
@@ -89,6 +96,10 @@ Crown::Application* Crown::CreateApplication() { return new MyGame(); }
 | `CreateEntity(name)` | Returns a reference. Read `.ID` from it immediately. |
 | `FindEntity(id)` | `nullptr` once the entity is gone. |
 | `FindOverlapping(e, out)` | Every entity overlapping this one, by id. No simulation needed. |
+| `SetVelocity(id, v)` / `GetVelocity(id)` | Drive a body. Metres per second. |
+| `ApplyImpulse(id, v)` | A shove. Mass-dependent, unlike `SetVelocity`. |
+| `Teleport(id, pos, deg)` | Move something outright: respawn, screen wrap, a door. |
+| `SetGravity(v)` | Zero for top-down or space. Applies mid-play. |
 | `DestroyEntity(id)` | Removes it. **Invalidates every `Entity*` you hold.** |
 | `GetEntities()` | The whole scene, if you want to iterate it. |
 | `Crown::Input::IsKeyPressed(Crown::Key::Space)` | Keyboard. Returns false while an editor field has focus. |
@@ -146,14 +157,36 @@ Set **Body** on an entity to give it a rigid body:
 `Collider size` multiplies `Scale`, so the collider follows the sprite unless you
 say otherwise. `Sensor` reports overlaps without pushing anything — pickups,
 triggers, goals. `Fixed rotation` stops a body toppling, which is what most
-characters want. Gravity is under the **Scene** menu.
+characters want. Gravity is under the **Scene** menu, and changing it there
+reaches a running scene immediately rather than waiting for the next Play.
 
 Physics only runs while playing, so nothing drifts while you are arranging a
 scene. Bodies are built when Play is pressed and destroyed on Stop. Entities you
 spawn mid-play need `AddPhysicsBody(entity)` once you have filled their fields in.
 
-`assets/scenes/physics-test.crown` is a floor and three boxes — open it and press
-Play.
+### Driving a body
+
+While playing, the step writes each body's transform onto its entity every
+frame, so assigning to `Position` fights the solver and loses. Go through the
+simulation instead:
+
+```cpp
+SetVelocity(id, { 2.0f, GetVelocity(id).y });   // walk, keep falling
+ApplyImpulse(id, { 3.0f, 1.0f });               // a shove; heavier bodies move less
+Teleport(id, spawn);                            // respawn, wrap, a door
+SetGravity({ 0.0f, 0.0f });                     // top-down or space
+```
+
+`SetVelocity` is exact whatever the body weighs, which is what a character
+wants; `ApplyImpulse` is mass-dependent, which is what an explosion wants.
+`Teleport` also works on an entity with no body, since then nothing else would
+move it.
+
+Two scenes to open and press Play:
+`assets/scenes/physics-test.crown` is a floor and three boxes falling.
+`assets/scenes/platformer.crown` is a level — **Left/Right** walk, **Space**
+jumps, the crates can be shoved, and walking off the end respawns you. Its
+controller is about thirty lines in `Sandbox`, which is all any of this takes.
 
 ## The editor
 
@@ -242,6 +275,10 @@ guess today:
 - **No batching.** One draw call per entity, still not a measured problem. If it
   becomes one, instancing is about ten lines.
 - **No asset GUIDs or import pipeline.** Paths are enough.
+- **No raycasts, joints or collision filtering.** The one place a ray would earn
+  its keep is a ground check, and comparing vertical speed is close enough until
+  it isn't. Box2D supports all three, and each is a few lines added to
+  `PhysicsWorld` the day a game actually needs one.
 
 ## Layout
 

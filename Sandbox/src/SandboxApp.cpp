@@ -62,17 +62,49 @@ public:
 		// but this one game.
 		m_RunningDemo = GetEntities().empty();
 		if (m_RunningDemo)
+		{
 			StartGame();
-		else
-			CROWN_INFO("Playing the authored scene ({0} entities).", GetEntities().size());
+			return;
+		}
+
+		CROWN_INFO("Playing the authored scene ({0} entities).", GetEntities().size());
+
+		// An authored scene gets a character controller if it contains an
+		// entity called Player. Nothing in the engine knows that name - this is
+		// the game deciding what its own scenes mean.
+		for (Crown::Entity& e : GetEntities())
+		{
+			if (e.Name != "Player")
+				continue;
+
+			m_PlayerID = e.ID;
+			m_PlayerSpawn = { e.Position.x, e.Position.y };
+			CROWN_INFO("Player is entity {0}. Left/Right walk, Space jumps.", e.ID);
+			break;
+		}
 	}
 
 	// Physics contacts arrive here whether the demo is running or not, which
 	// makes them visible while authoring a scene.
 	void OnCollision(uint32_t a, uint32_t b, bool beganTouching) override
 	{
-		if (!m_RunningDemo && beganTouching)
-			CROWN_INFO("Contact: {0} touched {1}", a, b);
+		if (m_RunningDemo || !beganTouching)
+			return;
+
+		CROWN_INFO("Contact: {0} touched {1}", a, b);
+
+		// Walking into a crate shoves it. An impulse rather than a velocity on
+		// purpose: the same shove should send the small crate further than the
+		// big one, and that only falls out if mass is in the sum.
+		uint32_t other = (a == m_PlayerID) ? b : (b == m_PlayerID ? a : 0);
+		if (other == 0 || m_PlayerID == 0)
+			return;
+
+		Crown::Entity* crate = FindEntity(other);
+		if (!crate || crate->Name.rfind("Crate", 0) != 0)
+			return;
+
+		ApplyImpulse(other, { GetVelocity(m_PlayerID).x * 0.12f, 0.05f });
 	}
 
 	void OnStop() override
@@ -82,16 +114,26 @@ public:
 		// and without clearing them a second Play would resume a finished match
 		// with a ship id pointing at something that no longer exists.
 		m_ShipID = 0;
+		m_PlayerID = 0;
 		m_Score = 0;
 		m_Lives = 3;
 		m_Wave = 0;
 		m_GameOver = false;
+
+		// Timers too, or the panel still says "Respawning..." into the next
+		// scene you play.
+		m_RespawnIn = 0.0f;
+		m_FireCooldown = 0.0f;
+		m_Invulnerable = 0.0f;
 	}
 
 	void OnUpdate(float dt) override
 	{
-		if (!m_RunningDemo)     // an authored scene is driven by physics alone
+		if (!m_RunningDemo)
+		{
+			DrivePlayer();      // velocities, not positions, so no dt here
 			return;
+		}
 
 		if (dt > 0.1f)          // a debugger pause should not teleport everything
 			dt = 0.1f;
@@ -111,6 +153,40 @@ public:
 			SpawnWave(++m_Wave);
 	}
 
+	// The whole character controller. It never assigns to Position: while
+	// playing, the solver would overwrite it on the next step.
+	void DrivePlayer()
+	{
+		Crown::Entity* player = (m_PlayerID != 0) ? FindEntity(m_PlayerID) : nullptr;
+		if (!player)
+			return;
+
+		glm::vec2 velocity = GetVelocity(m_PlayerID);
+
+		float walk = 0.0f;
+		if (Crown::Input::IsKeyPressed(Crown::Key::Left))  walk -= 1.0f;
+		if (Crown::Input::IsKeyPressed(Crown::Key::Right)) walk += 1.0f;
+
+		// Sideways is set outright and the fall is left alone. A character that
+		// accelerates and drifts like a crate feels like driving a crate.
+		SetVelocity(m_PlayerID, { walk * 1.6f, velocity.y });
+
+		// Cheap ground test: anything resting has almost no vertical speed.
+		// Wrong only at the apex of a jump, where it would let you jump again -
+		// a ray down from the feet is the honest version, and needs a raycast
+		// the engine does not have yet.
+		bool grounded = std::fabs(velocity.y) < 0.05f;
+		if (grounded && Crown::Input::IsKeyPressed(Crown::Key::Space))
+			SetVelocity(m_PlayerID, { walk * 1.6f, 3.5f });
+
+		if (player->Position.y < -2.0f)
+		{
+			Teleport(m_PlayerID, m_PlayerSpawn);
+			SetVelocity(m_PlayerID, { 0.0f, 0.0f });   // or it arrives falling at terminal speed
+			CROWN_INFO("Fell off the level - respawned.");
+		}
+	}
+
 	void OnImGuiRender() override
 	{
 		ImGui::SetNextWindowPos(ImVec2(1020.0f, 290.0f), ImGuiCond_FirstUseEver);
@@ -126,6 +202,8 @@ public:
 			ImGui::TextColored(ImVec4(1.0f, 0.9f, 0.4f, 1.0f), "Respawning...");
 		else if (m_Invulnerable > 0.0f)
 			ImGui::TextColored(ImVec4(0.5f, 0.9f, 1.0f, 1.0f), "Shielded %.1fs", m_Invulnerable);
+		else if (m_PlayerID != 0)
+			ImGui::TextDisabled("Left/Right walk, Space jumps");
 		else
 			ImGui::TextDisabled("Left/Right turn, Up thrust");
 		ImGui::End();
@@ -421,6 +499,11 @@ private:
 	bool      m_RunningDemo = false;
 	uint32_t  m_ShipID = 0;
 	glm::vec2 m_ShipVelocity{ 0.0f, 0.0f };
+
+	// The authored-scene half: whatever the scene called Player, and where it
+	// started, which is where it goes back to after falling off.
+	uint32_t  m_PlayerID = 0;
+	glm::vec2 m_PlayerSpawn{ 0.0f, 0.0f };
 
 	int   m_Score = 0;
 	int   m_Lives = 3;

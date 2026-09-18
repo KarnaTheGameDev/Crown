@@ -353,10 +353,11 @@ namespace Crown {
 				}
 				if (ImGui::BeginMenu("Scene"))
 				{
-					ImGui::DragFloat2("Gravity", &m_Gravity.x, 0.1f);
+					if (ImGui::DragFloat2("Gravity", &m_Gravity.x, 0.1f))
+						SetGravity(m_Gravity);       // straight into a running world, not just the next Play
 					if (ImGui::IsItemDeactivatedAfterEdit())
 						m_SceneDirty = true;
-					ImGui::TextDisabled("Applied when Play starts");
+					ImGui::TextDisabled("Takes effect immediately");
 					ImGui::EndMenu();
 				}
 				ImGui::EndMainMenuBar();
@@ -688,6 +689,45 @@ namespace Crown {
 	void Application::AddPhysicsBody(Entity& e)
 	{
 		m_Physics.AddBody(e);
+	}
+
+	void Application::SetVelocity(uint32_t id, glm::vec2 velocity)
+	{
+		m_Physics.SetVelocity(id, velocity);
+	}
+
+	glm::vec2 Application::GetVelocity(uint32_t id) const
+	{
+		return m_Physics.GetVelocity(id);
+	}
+
+	void Application::ApplyImpulse(uint32_t id, glm::vec2 impulse)
+	{
+		m_Physics.ApplyImpulse(id, impulse);
+	}
+
+	void Application::Teleport(uint32_t id, glm::vec2 position, float rotationDegrees)
+	{
+		// Both sides. The body, so the simulation carries on from the new place
+		// rather than dragging it back; and the entity, so the move is on screen
+		// this frame even if no fixed step happens to fall inside it - and so
+		// that an entity with no body moves at all.
+		if (Entity* e = FindEntity(id))
+		{
+			e->Position.x = position.x;
+			e->Position.y = position.y;
+			e->Rotation = rotationDegrees;
+		}
+
+		m_Physics.SetTransform(id, position, rotationDegrees);
+	}
+
+	void Application::SetGravity(glm::vec2 gravity)
+	{
+		// Stored as well as applied: OnPlay runs before the world is built, so
+		// a game setting gravity there would otherwise be overwritten by Begin.
+		m_Gravity = gravity;
+		m_Physics.SetGravity(gravity);
 	}
 
 	Entity* Application::FindEntity(uint32_t id)

@@ -39,6 +39,23 @@ namespace Crown {
 		void AddBody(Entity& entity);
 		void DestroyBody(uint32_t entityID);
 
+		// The step writes body transforms onto the entities, so an entity moved
+		// by hand while playing is overwritten by the next one. These go the
+		// other way, into the simulation, and are how a game drives a body.
+		// All of them ignore an entity that has no body.
+		void SetVelocity(uint32_t entityID, glm::vec2 velocity);
+		glm::vec2 GetVelocity(uint32_t entityID) const;
+
+		// Mass-dependent: the same impulse moves a small body further than a
+		// big one. Use SetVelocity when you want an exact speed regardless.
+		void ApplyImpulse(uint32_t entityID, glm::vec2 impulse);
+
+		void SetTransform(uint32_t entityID, glm::vec2 position, float rotationDegrees);
+
+		// Takes effect on the next step. Ignored when nothing is playing, so
+		// the caller keeps whatever the next Begin should start with.
+		void SetGravity(glm::vec2 gravity);
+
 		bool IsRunning() const { return m_Running; }
 		int BodyCount() const { return (int)m_Bodies.size(); }
 
@@ -50,6 +67,9 @@ namespace Crown {
 		// into everything that includes Application.h.
 		struct BodyHandle { uint64_t Bits[2]; };
 		std::unordered_map<uint32_t, BodyHandle> m_Bodies;
+
+		// Null when the entity has no body, or when nothing is playing.
+		const BodyHandle* FindHandle(uint32_t entityID) const;
 
 		// A fixed step keeps the simulation stable and repeatable. A frame that
 		// took too long is spread over several steps instead of one huge one.

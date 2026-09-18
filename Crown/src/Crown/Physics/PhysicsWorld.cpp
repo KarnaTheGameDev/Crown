@@ -126,6 +126,83 @@ namespace Crown {
 		m_Bodies.erase(found);
 	}
 
+	const PhysicsWorld::BodyHandle* PhysicsWorld::FindHandle(uint32_t entityID) const
+	{
+		if (!m_Running)
+			return nullptr;
+
+		auto found = m_Bodies.find(entityID);
+		return (found == m_Bodies.end()) ? nullptr : &found->second;
+	}
+
+	void PhysicsWorld::SetVelocity(uint32_t entityID, glm::vec2 velocity)
+	{
+		const BodyHandle* handle = FindHandle(entityID);
+		if (!handle)
+			return;
+
+		b2BodyId body{};
+		std::memcpy(&body, handle, sizeof(body));
+		b2Body_SetLinearVelocity(body, { velocity.x, velocity.y });
+
+		// A body that has gone to sleep ignores everything until something
+		// wakes it, which looks exactly like the call having been dropped.
+		b2Body_SetAwake(body, true);
+	}
+
+	glm::vec2 PhysicsWorld::GetVelocity(uint32_t entityID) const
+	{
+		const BodyHandle* handle = FindHandle(entityID);
+		if (!handle)
+			return { 0.0f, 0.0f };
+
+		b2BodyId body{};
+		std::memcpy(&body, handle, sizeof(body));
+		b2Vec2 velocity = b2Body_GetLinearVelocity(body);
+		return { velocity.x, velocity.y };
+	}
+
+	void PhysicsWorld::ApplyImpulse(uint32_t entityID, glm::vec2 impulse)
+	{
+		const BodyHandle* handle = FindHandle(entityID);
+		if (!handle)
+			return;
+
+		b2BodyId body{};
+		std::memcpy(&body, handle, sizeof(body));
+		b2Body_ApplyLinearImpulseToCenter(body, { impulse.x, impulse.y }, true);
+	}
+
+	void PhysicsWorld::SetTransform(uint32_t entityID, glm::vec2 position, float rotationDegrees)
+	{
+		const BodyHandle* handle = FindHandle(entityID);
+		if (!handle)
+			return;
+
+		b2BodyId body{};
+		std::memcpy(&body, handle, sizeof(body));
+		b2Body_SetTransform(body, { position.x, position.y }, b2MakeRot(glm::radians(rotationDegrees)));
+		b2Body_SetAwake(body, true);
+	}
+
+	void PhysicsWorld::SetGravity(glm::vec2 gravity)
+	{
+		if (!m_Running)
+			return;
+
+		b2World_SetGravity(g_World, { gravity.x, gravity.y });
+
+		// Gravity on its own does not wake a sleeping body, so everything
+		// already at rest would ignore the change until something bumped into
+		// it - which looks exactly like the call having done nothing.
+		for (const auto& entry : m_Bodies)
+		{
+			b2BodyId body{};
+			std::memcpy(&body, &entry.second, sizeof(body));
+			b2Body_SetAwake(body, true);
+		}
+	}
+
 	void PhysicsWorld::Step(float deltaTime, std::vector<Entity>& entities, std::vector<Contact>& outContacts)
 	{
 		if (!m_Running)

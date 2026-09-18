@@ -1,0 +1,73 @@
+crown-scene 1
+entity
+id 1
+name Floor
+pos 0 -0.85 0
+rot 0
+scale 2 0.12
+sprite 0 0 1 1
+tint 0.35 0.4 0.5 1
+body 1
+collider 1 1
+material 1 0.5 0
+bodyflags 0 0
+entity
+id 2
+name PlatformA
+pos -0.3 -0.25 0
+rot 0
+scale 0.4 0.09
+sprite 0 0 1 1
+tint 0.3 0.45 0.58 1
+body 1
+collider 1 1
+material 1 0.5 0
+bodyflags 0 0
+entity
+id 3
+name PlatformB
+pos 0.55 0.25 0
+rot 0
+scale 0.5 0.09
+sprite 0 0 1 1
+tint 0.3 0.45 0.58 1
+body 1
+collider 1 1
+material 1 0.5 0
+bodyflags 0 0
+entity
+id 4
+name Player
+pos -1.25 -0.4 0
+rot 0
+scale 0.22 0.22
+sprite 0 0 1 1
+tint 0.45 0.85 0.5 1
+body 2
+collider 1 1
+material 1 0.2 0
+bodyflags 1 0
+entity
+id 5
+name CrateSmall
+pos 0.3 -0.6 0
+rot 0
+scale 0.16 0.16
+sprite 0 0 1 1
+tint 0.9 0.62 0.32 1
+body 2
+collider 1 1
+material 1 0.4 0
+bodyflags 0 0
+entity
+id 6
+name CrateBig
+pos 0.8 -0.5 0
+rot 0
+scale 0.3 0.3
+sprite 0 0 1 1
+tint 0.75 0.45 0.25 1
+body 2
+collider 1 1
+material 1 0.4 0
+bodyflags 0 0
