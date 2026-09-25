@@ -291,8 +291,10 @@ namespace Crown {
 				                        -s_CameraZoom, s_CameraZoom);
 			}
 
-			// Typing into a slider must not also drive the camera.
-			if (!ImGui::GetIO().WantCaptureKeyboard)
+			// Typing into a slider must not also drive the camera, and neither
+			// must playing: WASD is a gameplay binding, so in Play the camera
+			// belongs to the game, not the editor.
+			if (m_SceneState == SceneState::Edit && !ImGui::GetIO().WantCaptureKeyboard)
 			{
 				glm::vec3 position = m_Camera->GetPosition();
 				if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) position.x -= m_CameraSpeed * dt;
